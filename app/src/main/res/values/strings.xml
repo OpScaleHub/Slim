@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Slim</string>
+    <string name="title_favorites">Favorites</string>
+    <string name="title_all_apps">All Apps</string>
+    <string name="hint_search">Search apps...</string>
+    <string name="settings_title">Slim Settings</string>
+    <string name="settings_notification_permission">Enable Notification Access</string>
+    <string name="settings_choose_home">Set Default Home Launcher</string>
+</resources>

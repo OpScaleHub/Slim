@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent_indigo">#6366f1</color>
+    <color name="bg_dark">#090a10</color>
+    <color name="border_color">#1f2937</color>
+    <color name="card_bg">#12131a</color>
+    <color name="text_muted">#64748b</color>
+    <color name="text_primary">#f8fafc</color>
+    <color name="text_secondary">#94a3b8</color>
+    <string name="app_name">Slim</string>
+    <string name="hint_search">Search apps...</string>
+    <string name="settings_choose_home">Set Default Home Launcher</string>
+    <string name="settings_notification_permission">Enable Notification Access</string>
+    <string name="settings_title">Slim Settings</string>
+    <string name="title_all_apps">All Apps</string>
+    <string name="title_favorites">Favorites</string>
+    <style name="Theme.Slim" parent="Theme.Material3.DayNight.NoActionBar">
+        
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowShowWallpaper">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        
+        <item name="colorPrimary">@color/accent_indigo</item>
+    </style>
+</resources>

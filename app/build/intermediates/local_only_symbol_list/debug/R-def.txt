@@ -1,0 +1,36 @@
+R_DEF: Internal format may change without notice
+local
+color accent_indigo
+color bg_dark
+color border_color
+color card_bg
+color text_muted
+color text_primary
+color text_secondary
+drawable search_bg
+id appRecyclerView
+id headerLayout
+id imgAppIcon
+id searchContainer
+id searchEditText
+id searchScrim
+id txtAppName
+id txtClock
+id txtDate
+id txtLetterPopup
+id txtNotificationCount
+id txtNotificationPreview
+id txtSettingsTrigger
+id txtWeather
+id waveGestureView
+id widgetContainer
+layout activity_main
+layout item_app
+string app_name
+string hint_search
+string settings_choose_home
+string settings_notification_permission
+string settings_title
+string title_all_apps
+string title_favorites
+style Theme.Slim

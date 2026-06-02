@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slim Launcher - Minimalist Android Launcher</title>
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Slim Launcher is an ultra-minimalist, gesture-driven Android home screen alternative. Focused on speed, efficiency, and zero telemetry.">
+    <meta name="keywords" content="Android Launcher, Niagara Launcher alternative, Minimalist Launcher, F-Droid Launcher, Open Source Android">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- Gradient Background Decors -->
+    <div class="bg-glow blob-1" id="blob-1"></div>
+    <div class="bg-glow blob-2" id="blob-2"></div>
+
+    <!-- Navigation Header -->
+    <header class="header">
+        <div class="container header-container">
+            <a href="#" class="logo">
+                <span class="logo-icon"><i class="fa-solid fa-mobile-screen-button"></i></span>
+                <span class="logo-text">Slim.</span>
+            </a>
+            <nav class="nav">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#interactive" class="nav-link">Interactive Demo</a>
+                <a href="#download" class="nav-link">Download</a>
+            </nav>
+            <a href="https://github.com/opscalehub/slim" class="github-btn" target="_blank" id="github-header-btn">
+                <i class="fa-brands fa-github"></i> <span>GitHub</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container hero-container">
+            <div class="hero-content">
+                <span class="badge"><i class="fa-solid fa-sparkles"></i> 100% Free & Open Source</span>
+                <h1 class="hero-title">Rethink Your Phone.</h1>
+                <p class="hero-subtitle">
+                    A premium, gesture-centric Android launcher designed for speed, focus, and single-handed efficiency. Zero clutter, zero distractions, zero telemetry.
+                </p>
+                <div class="hero-actions">
+                    <a href="https://github.com/opscalehub/slim/releases" class="btn btn-primary" target="_blank" id="download-apk-btn">
+                        <i class="fa-solid fa-download"></i> Download APK
+                    </a>
+                    <a href="#download" class="btn btn-secondary">
+                        <i class="fa-solid fa-store"></i> View F-Droid
+                    </a>
+                </div>
+            </div>
+
+            <!-- Phone Mockup Frame containing interactive launcher simulation -->
+            <div class="hero-visual" id="interactive">
+                <div class="phone-frame">
+                    <div class="phone-screen">
+                        <!-- Phone Notch/StatusBar -->
+                        <div class="phone-header">
+                            <span class="time" id="phone-time">10:09</span>
+                            <div class="icons">
+                                <i class="fa-solid fa-signal"></i>
+                                <i class="fa-solid fa-wifi"></i>
+                                <i class="fa-solid fa-battery-three-quarters"></i>
+                            </div>
+                        </div>
+
+                        <!-- Phone Launcher Interface -->
+                        <div class="launcher-interface">
+                            <!-- Context Block -->
+                            <div class="context-block">
+                                <div class="date" id="phone-date">Tuesday, June 2</div>
+                                <div class="weather">
+                                    <span class="weather-temp"><i class="fa-solid fa-cloud-sun"></i> 22°C</span>
+                                    <span class="weather-location">London</span>
+                                </div>
+                            </div>
+
+                            <!-- Launcher Scroll Area -->
+                            <div class="launcher-scroll-area">
+                                <div class="favorites-section">
+                                    <div class="section-title">Favorites</div>
+                                    <div class="fav-item" data-app="chrome">
+                                        <div class="app-icon chrome-icon"><i class="fa-brands fa-chrome"></i></div>
+                                        <div class="app-info">
+                                            <div class="app-name">Chrome</div>
+                                            <div class="app-notif">2 Tabs open</div>
+                                        </div>
+                                    </div>
+                                    <div class="fav-item" data-app="messages">
+                                        <div class="app-icon messages-icon"><i class="fa-solid fa-comment-dots"></i></div>
+                                        <div class="app-info">
+                                            <div class="app-name">Messages</div>
+                                            <div class="app-notif-badge">1</div>
+                                        </div>
+                                    </div>
+                                    <div class="fav-item" data-app="spotify">
+                                        <div class="app-icon spotify-icon"><i class="fa-brands fa-spotify"></i></div>
+                                        <div class="app-info">
+                                            <div class="app-name">Spotify</div>
+                                            <div class="app-notif">Now Playing...</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="all-apps-section" id="apps-list">
+                                    <!-- Dynamic content based on slider -->
+                                    <div class="app-group" id="group-A">
+                                        <div class="group-letter">A</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Acrobat</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Amazon</div>
+                                    </div>
+                                    <div class="app-group" id="group-B">
+                                        <div class="group-letter">B</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Backdrops</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Bitwarden</div>
+                                    </div>
+                                    <div class="app-group" id="group-C">
+                                        <div class="group-letter">C</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Calculator</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Calendar</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Camera</div>
+                                    </div>
+                                    <div class="app-group" id="group-D">
+                                        <div class="group-letter">D</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Discord</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Drive</div>
+                                    </div>
+                                    <div class="app-group" id="group-E">
+                                        <div class="group-letter">E</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Email</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Evernote</div>
+                                    </div>
+                                    <div class="app-group" id="group-F">
+                                        <div class="group-letter">F</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Files</div>
+                                        <div class="app-list-item"><span class="item-dot"></span>Firefox</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Wave Slider Panel -->
+                            <div class="wave-slider" id="wave-slider">
+                                <!-- Generated Dynamically by JS to enable rendering letter spacing -->
+                            </div>
+                        </div>
+
+                        <!-- Phone Bottom Pill Navigation -->
+                        <div class="phone-navigation-bar">
+                            <div class="nav-pill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="visual-hint"><i class="fa-solid fa-arrow-pointer"></i> Drag along the letters to try the wave scroll!</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bento Features Section -->
+    <section class="features-section" id="features">
+        <div class="container">
+            <h2 class="section-heading text-center">Engineered for Focus</h2>
+            <p class="section-subheading text-center">Every interaction designed to be swift, beautiful, and completely custom.</p>
+            
+            <div class="bento-grid">
+                <!-- Card 1: Wave Gesture -->
+                <div class="bento-card card-large">
+                    <div class="card-glow"></div>
+                    <div class="card-content">
+                        <div class="card-icon"><i class="fa-solid fa-water"></i></div>
+                        <h3>The Wave Scroll Gesture</h3>
+                        <p>No more searching for app icons. Swipe along either edge of your screen. The alphabetical index bends organically under your thumb, launching any application instantly with subtle, mechanical haptic vibrations.</p>
+                    </div>
+                    <div class="card-preview wave-preview-visual">
+                        <div class="wave-line">
+                            <span class="wave-node">A</span>
+                            <span class="wave-node">B</span>
+                            <span class="wave-node active-node">C</span>
+                            <span class="wave-node">D</span>
+                            <span class="wave-node">E</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Privacy -->
+                <div class="bento-card">
+                    <div class="card-content">
+                        <div class="card-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                        <h3>100% Privacy, No Telemetry</h3>
+                        <p>Unlike proprietary alternatives, Slim does not collect app usage, crash reports, or search inputs. It runs completely offline with zero internet permissions requested.</p>
+                    </div>
+                </div>
+
+                <!-- Card 3: Material You Dynamic Tint -->
+                <div class="bento-card card-medium" id="palette-card">
+                    <div class="card-content">
+                        <div class="card-icon"><i class="fa-solid fa-palette"></i></div>
+                        <h3>Dynamic Color Theming</h3>
+                        <p>Slim supports Android's Material You theme engine. The launcher colors, text indicators, and folder icons adapt automatically to match your wallpaper palette.</p>
+                        <div class="palette-picker">
+                            <button class="palette-dot dot-indigo active" data-color="indigo"></button>
+                            <button class="palette-dot dot-emerald" data-color="emerald"></button>
+                            <button class="palette-dot dot-rose" data-color="rose"></button>
+                            <button class="palette-dot dot-amber" data-color="amber"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Inline Notifications -->
+                <div class="bento-card card-large">
+                    <div class="card-content">
+                        <div class="card-icon"><i class="fa-solid fa-bell"></i></div>
+                        <h3>Inline Notification Center</h3>
+                        <p>View message notifications right below your favorite app shortcuts. Expand notification stacks, reply inside the launcher card, or swipe to dismiss without opening the notification tray.</p>
+                    </div>
+                    <div class="card-preview notification-mock">
+                        <div class="notif-bubble">
+                            <div class="notif-header">
+                                <span class="notif-author">Sarah Jenkins</span>
+                                <span class="notif-time">Just now</span>
+                            </div>
+                            <p class="notif-body">Are we still meeting at 6:00 PM for the project sync?</p>
+                            <div class="notif-actions">
+                                <span class="action-btn">Reply</span>
+                                <span class="action-btn dismiss">Dismiss</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section class="download-section" id="download">
+        <div class="container">
+            <div class="download-box">
+                <h2>Join the Beta Program</h2>
+                <p>Slim Launcher is actively maintained and distributed completely free without in-app purchases or subscription lockouts.</p>
+                
+                <div class="download-grid">
+                    <!-- GitHub Card -->
+                    <div class="download-card">
+                        <div class="card-head">
+                            <i class="fa-brands fa-github"></i>
+                            <h3>GitHub Releases</h3>
+                        </div>
+                        <p>Download signed production APK releases directly from the repository tags.</p>
+                        <a href="https://github.com/opscalehub/slim/releases" class="btn btn-primary" target="_blank" id="download-github-releases">Get APK (Direct)</a>
+                    </div>
+                    
+                    <!-- F-Droid Card -->
+                    <div class="download-card">
+                        <div class="card-head">
+                            <i class="fa-solid fa-cubes"></i>
+                            <h3>F-Droid Store</h3>
+                        </div>
+                        <p>Install via the F-Droid store for automated, open-source updates and signature checks.</p>
+                        <a href="https://f-droid.org" class="btn btn-secondary" target="_blank" id="download-fdroid">Browse F-Droid</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <p>&copy; 2026 Opscalehub. Built under the Apache License 2.0.</p>
+            <div class="footer-links">
+                <a href="https://github.com/opscalehub/slim" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
+                <a href="https://github.com/opscalehub/slim/issues" target="_blank"><i class="fa-solid fa-bug"></i> Report Bug</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Wave Gesture Logic -->
+    <script>
+        // Set dynamic date in phone mockup
+        const dateElement = document.getElementById('phone-date');
+        if (dateElement) {
+            const options = { weekday: 'long', month: 'long', day: 'numeric' };
+            dateElement.textContent = new Date().toLocaleDateString('en-US', options);
+        }
+
+        // Set dynamic time in phone mockup
+        function updateTime() {
+            const timeElement = document.getElementById('phone-time');
+            if (timeElement) {
+                const now = new Date();
+                let hours = now.getHours();
+                let minutes = now.getMinutes();
+                hours = hours < 10 ? '0' + hours : hours;
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                timeElement.textContent = `${hours}:${minutes}`;
+            }
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // Generate Alphabet Wave Slider dynamically
+        const slider = document.getElementById('wave-slider');
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        
+        alphabet.forEach(letter => {
+            const el = document.createElement('div');
+            el.className = 'letter';
+            el.textContent = letter;
+            el.dataset.letter = letter;
+            slider.appendChild(el);
+        });
+
+        const letters = document.querySelectorAll('.letter');
+        const appsList = document.getElementById('apps-list');
+
+        function handleWaveGesture(yTouch) {
+            const sliderRect = slider.getBoundingClientRect();
+            const relativeY = yTouch - sliderRect.top;
+            
+            // Limit within boundaries
+            const boundedY = Math.max(0, Math.min(relativeY, sliderRect.height));
+            
+            // Identify targeted index
+            const index = Math.floor((boundedY / sliderRect.height) * alphabet.length);
+            const activeIndex = Math.max(0, Math.min(index, alphabet.length - 1));
+            const targetedLetter = alphabet[activeIndex];
+
+            // Apply displacement algorithm (Gaussian)
+            letters.forEach((el, i) => {
+                const itemRect = el.getBoundingClientRect();
+                const itemCenterY = itemRect.top + itemRect.height / 2 - sliderRect.top;
+                
+                const dy = itemCenterY - relativeY;
+                const maxDisplacement = -35; // displacement in pixels
+                const sigma = 35; // width of curve
+                
+                // Gaussian curve formulas
+                const displacement = maxDisplacement * Math.exp(-(dy * dy) / (2 * sigma * sigma));
+                const scale = 1 + 0.6 * Math.exp(-(dy * dy) / (2 * sigma * sigma));
+                
+                el.style.transform = `translateX(${displacement}px) scale(${scale})`;
+                
+                if (i === activeIndex) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+
+            // Scroll apps list to the targeted group if it exists
+            const targetGroup = document.getElementById(`group-${targetedLetter}`);
+            if (targetGroup) {
+                targetGroup.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // Mouse & Touch events
+        let isDragging = false;
+
+        slider.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            handleWaveGesture(e.clientY);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            handleWaveGesture(e.clientY);
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            resetWave();
+        });
+
+        // Touch support
+        slider.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            handleWaveGesture(e.touches[0].clientY);
+        });
+
+        slider.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault(); // prevent pull-to-refresh
+            handleWaveGesture(e.touches[0].clientY);
+        });
+
+        slider.addEventListener('touchend', () => {
+            isDragging = false;
+            resetWave();
+        });
+
+        function resetWave() {
+            letters.forEach(el => {
+                el.style.transform = 'none';
+                el.classList.remove('active');
+            });
+        }
+
+        // Theme palette color switcher for preview
+        const dots = document.querySelectorAll('.palette-dot');
+        const root = document.documentElement;
+
+        const colors = {
+            indigo: { primary: '#6366f1', glow: 'rgba(99, 102, 241, 0.15)' },
+            emerald: { primary: '#10b981', glow: 'rgba(16, 185, 129, 0.15)' },
+            rose: { primary: '#f43f5e', glow: 'rgba(244, 63, 94, 0.15)' },
+            amber: { primary: '#f59e0b', glow: 'rgba(245, 158, 11, 0.15)' }
+        };
+
+        dots.forEach(dot => {
+            dot.addEventListener('click', () => {
+                dots.forEach(d => d.classList.remove('active'));
+                dot.classList.add('active');
+                
+                const selected = dot.dataset.color;
+                const palette = colors[selected];
+                
+                // Modify CSS variables dynamically
+                root.style.setProperty('--accent', palette.primary);
+                root.style.setProperty('--accent-glow', palette.glow);
+            });
+        });
+    </script>
+</body>
+</html>
