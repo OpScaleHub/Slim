@@ -27,22 +27,28 @@ class WaveGestureView @JvmOverloads constructor(
 
     var listener: OnLetterSelectedListener? = null
 
-    private val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
-        .filter { it.isNotEmpty() }
+    // Letters shown in the index. Only letters that actually have apps are
+    // displayed (set via setLetters), keeping the column compact.
+    private var alphabet: List<String> = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map { it.toString() }
 
     private var activeIndex = -1
     private var isDragging = false
     private var touchY = 0f
 
+    // Adaptive palette (updated from MainActivity to stay readable on any wallpaper)
+    private var activeColor = Color.parseColor("#f8fafc") // text_primary
+    private var inactiveColor = Color.parseColor("#64748b") // text_muted
+
     // Pre-allocated styling paints
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#64748b") // text_muted
+        color = inactiveColor
         textAlign = Paint.Align.CENTER
         style = Paint.Style.FILL
+        setShadowLayer(4f, 0f, 1f, Color.parseColor("#80000000"))
     }
 
     private val textBounds = Rect()
-    
+
     // Haptics system
     private val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -52,9 +58,28 @@ class WaveGestureView @JvmOverloads constructor(
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
 
+    /**
+     * Replaces the displayed letters with only those that have at least one
+     * app, so empty letters never clutter the index.
+     */
+    fun setLetters(letters: List<String>) {
+        if (letters.isEmpty() || letters == alphabet) return
+        alphabet = letters
+        activeIndex = -1
+        invalidate()
+    }
+
+    /** Updates colors so the index stays readable on light or dark wallpapers. */
+    fun setPalette(active: Int, inactive: Int) {
+        if (active == activeColor && inactive == inactiveColor) return
+        activeColor = active
+        inactiveColor = inactive
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (height == 0) return
+        if (height == 0 || alphabet.isEmpty()) return
 
         val itemHeight = height.toFloat() / alphabet.size
         val centerX = width / 2f
@@ -79,10 +104,10 @@ class WaveGestureView @JvmOverloads constructor(
 
             // Configure Paint dynamically
             if (i == activeIndex) {
-                textPaint.color = Color.parseColor("#f8fafc") // text_primary
+                textPaint.color = activeColor
                 textPaint.isFakeBoldText = true
             } else {
-                textPaint.color = Color.parseColor("#64748b") // text_muted
+                textPaint.color = inactiveColor
                 textPaint.isFakeBoldText = false
             }
 
@@ -98,6 +123,7 @@ class WaveGestureView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (alphabet.isEmpty()) return false
         val itemHeight = height.toFloat() / alphabet.size
         touchY = event.y
 
@@ -105,7 +131,7 @@ class WaveGestureView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
                 isDragging = true
                 val index = (touchY / itemHeight).toInt().coerceIn(0, alphabet.size - 1)
-                
+
                 if (index != activeIndex) {
                     activeIndex = index
                     triggerTick()

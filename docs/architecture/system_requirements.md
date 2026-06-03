@@ -22,11 +22,15 @@ Because the launcher manages app launching, widgets, notifications, and wallpape
 ```mermaid
 graph TD
     Launcher[Slim Launcher] -->|Default Home App| Home[android.intent.category.HOME]
-    Launcher -->|Query Apps| Query[android.permission.QUERY_ALL_PACKAGES]
+    Launcher -->|Query Apps| Query[manifest queries declaration]
     Launcher -->|Read Notifications| NListener[android.permission.BIND_NOTIFICATION_LISTENER_SERVICE]
     Launcher -->|Bind Widgets| Widget[android.permission.BIND_APPWIDGET]
     Launcher -->|Haptics| Vibe[android.permission.VIBRATE]
+    Launcher -->|Opt-in Weather Only| Net[android.permission.INTERNET]
 ```
+
+> [!NOTE]
+> `INTERNET` is declared solely for the **opt-in** real-weather feature (Open-Meteo). With the default settings, Slim makes zero network calls.
 
 ### 1. Home App Intent Handler
 In `AndroidManifest.xml`, the main Activity must register as a system home launcher:
@@ -40,7 +44,7 @@ In `AndroidManifest.xml`, the main Activity must register as a system home launc
 
 ### 2. App Query & Discovery
 - **API**: `android.content.pm.LauncherApps`
-- **Permission**: `android.permission.QUERY_ALL_PACKAGES`
+- **Visibility**: A `<queries>` declaration for `MAIN`/`LAUNCHER` intents (not the heavy-handed `QUERY_ALL_PACKAGES` permission, which Google Play restricts).
 - **Purpose**: Required on Android 11+ (API 30+) to discover and launch installed applications. The launcher must query `LauncherApps.getActivityList(null, user)` to ensure only launchable launcher activities are listed.
 
 ### 3. Notification Access
@@ -62,7 +66,9 @@ Slim Launcher is designed with a strict MVVM (Model-View-ViewModel) pattern usin
 ```
 +--------------------------------------------------------+
 |                      UI LAYER                          |
-|   MainActivity -> RecyclerScroll & WaveGestureView     |
+|  MainActivity -> RecyclerScroll & WaveGestureView      |
+|              -> Floating Search Panel                  |
+|  SettingsActivity -> Feature toggles, About/Contact    |
 +--------------------------------------------------------+
                            ^
                            | Observes Flows
@@ -76,7 +82,8 @@ Slim Launcher is designed with a strict MVVM (Model-View-ViewModel) pattern usin
                            v
 +--------------------------------------------------------+
 |                   REPOSITORY LAYER                     |
-|  AppRepository  |  WidgetRepository  | NotificationRepo |
+|  AppRepository | SlimPreferences | WeatherService      |
+|  NotificationRegistry                                  |
 +--------------------------------------------------------+
       ^                  ^                   ^
       | LauncherApps API | AppWidgetHost     | NotificationListener

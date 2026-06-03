@@ -4,7 +4,8 @@ tags:
   - slim-launcher
   - documentation
 created: 2026-06-02
-status: Planning
+updated: 2026-06-03
+status: In Development
 ---
 
 # Slim Launcher: Obsidian Knowledge Base & Agent Docs
@@ -18,6 +19,7 @@ Welcome to the central documentation hub for **Slim Launcher** (a minimalist, ge
 ### 🏛️ Architecture & Requirements
 - **[[architecture/system_requirements|System Requirements & API Architecture]]**: Deep-dive into Android system services, permissions, and background lifecycle.
 - **[[architecture/ui_ux_layout|UI/UX Layout & Wave Gesture Mechanics]]**: Detailed specifications for the minimalist scroll and wave touch mechanics.
+- **[[architecture/settings_and_features|Settings, Feature Toggles & Search Behavior]]**: The Settings screen, preference storage, smart search ranking, weather modes, and adaptive theming.
 - **[[distribution/fdroid_publishing|F-Droid Publishing & Compliance Guide]]**: Security, FOSS principles, and build setups for F-Droid submission.
 
 ### 🤖 Agent Development Protocols

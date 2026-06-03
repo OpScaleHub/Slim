@@ -20,7 +20,7 @@ Back to **[[index|Main Hub]]**
 F-Droid builds all applications directly from source using their build servers. For Slim Launcher to be accepted, it must adhere to strict guidelines:
 
 1. **No Proprietary Dependencies**: All libraries (e.g., UI widgets, image loading, databases) must have free licenses. Google Play Services dependencies must be completely excluded or modularized.
-2. **Offline Analytics Policy**: Proprietary tracking kits (like Google Firebase, AppCenter, or Mixpanel) are strictly prohibited. Slim Launcher is built to be offline-first, meaning we do not require the `android.permission.INTERNET` permission at all.
+2. **Offline Analytics Policy**: Proprietary tracking kits (like Google Firebase, AppCenter, or Mixpanel) are strictly prohibited. Slim Launcher is offline-first: the `android.permission.INTERNET` permission exists solely for the *opt-in* real-weather feature, which calls the free and open [Open-Meteo](https://open-meteo.com) API (no key, no account, no tracking). No network call is ever made unless the user explicitly enables it in Settings.
 3. **Reproducible Builds**: The build system must be structured so that compiling the code locally yields the exact same byte-for-byte binary as the build server.
 
 ---
@@ -33,9 +33,9 @@ This YAML metadata file is submitted to the F-Droid metadata repository (`fdroid
 Categories:
   - System
 License: Apache-2.0
-WebSite: https://opscalehub.github.io/slim
-SourceCode: https://github.com/opscalehub/slim
-IssueTracker: https://github.com/opscalehub/slim/issues
+WebSite: https://opscalehub.github.io/Slim
+SourceCode: https://github.com/OpScaleHub/Slim
+IssueTracker: https://github.com/OpScaleHub/Slim/issues
 
 Summary: Minimalist, gesture-driven launcher focused on efficiency.
 Description: |-
@@ -44,11 +44,13 @@ Description: |-
   
   Features:
   - Wave Alphabet Scroll: Easy single-handed navigation.
-  - Inline Notifications: Reply and swipe directly from your favorites.
-  - Offline-first: No internet permission, ensuring 100% privacy.
+  - Smart Search: Relevance-ranked results with recent-search quick chips.
+  - Inline Notifications: Previews directly under your favorite apps.
+  - Configurable: Toggle clock, date, weather, gestures and more in Slim Settings.
+  - Offline-first: Network is used only for opt-in weather (Open-Meteo).
 
 RepoType: git
-Repo: https://github.com/opscalehub/slim.git
+Repo: https://github.com/OpScaleHub/Slim.git
 
 Builds:
   - versionName: 1.0.0
@@ -82,13 +84,11 @@ android {
 }
 ```
 
-### 2. Eliminating Internet Permissions
-To enforce user trust, **do not** include the internet permission in the `foss` source set Manifest:
-```xml
-<!-- Manifest inside app/src/foss/AndroidManifest.xml -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.slim.launcher">
-    <!-- Zero network permissions -->
-</manifest>
-```
-All weather, calendar, and clock metadata are fetched locally via system providers (`CalendarContract`, local system broadcasts).
+### 2. Internet Permission Policy
+The manifest declares `android.permission.INTERNET` for exactly one purpose: the **opt-in** real-weather feature backed by Open-Meteo (a free, open, key-less API). This is F-Droid compliant because:
+
+- No proprietary network service or SDK is involved.
+- The default configuration ("Ambient" weather) makes **zero** network calls.
+- The user must explicitly enable real weather and type a city in Settings before any request is made.
+
+Clock and date metadata are always fetched locally via system providers. If a future feature ever requires a non-free network service, it must be isolated in a `play` build flavor and excluded from the `foss` flavor.

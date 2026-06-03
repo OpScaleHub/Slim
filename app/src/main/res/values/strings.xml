@@ -2,8 +2,56 @@
     <string name="app_name">Slim</string>
     <string name="title_favorites">Favorites</string>
     <string name="title_all_apps">All Apps</string>
-    <string name="hint_search">Search apps...</string>
+    <string name="title_recent_searches">Recent</string>
+    <string name="hint_search">Search apps…</string>
+    <string name="search_no_results">No apps found</string>
+
+    <!-- Settings screen -->
     <string name="settings_title">Slim Settings</string>
+    <string name="settings_section_home">Home Screen</string>
+    <string name="settings_section_weather">Weather</string>
+    <string name="settings_section_search">Search</string>
+    <string name="settings_section_gestures">Gestures</string>
+    <string name="settings_section_system">System</string>
+    <string name="settings_section_about">About</string>
+
+    <string name="settings_show_clock">Show clock</string>
+    <string name="settings_show_date">Show date</string>
+    <string name="settings_24_hour">Use 24-hour time</string>
+
+    <string name="settings_weather_mode">Weather display</string>
+    <string name="settings_weather_off">Off</string>
+    <string name="settings_weather_simulated">Ambient (offline, seasonal estimate)</string>
+    <string name="settings_weather_real">Real weather (online, Open-Meteo)</string>
+    <string name="settings_weather_city">City</string>
+    <string name="settings_weather_city_hint">e.g. Berlin</string>
+    <string name="settings_weather_fahrenheit">Use Fahrenheit (°F)</string>
+    <string name="settings_weather_privacy_note">Real weather connects to open-meteo.com (no account, no tracking). All other launcher features stay fully offline.</string>
+    <string name="settings_weather_city_saved">City set to %1$s</string>
+    <string name="settings_weather_city_not_found">City not found — check the spelling or your connection</string>
+
+    <string name="settings_search_history">Remember recently searched apps</string>
+    <string name="settings_clear_history">Clear search history</string>
+    <string name="settings_history_cleared">Search history cleared</string>
+
+    <string name="settings_swipe_up_search">Swipe up to open search</string>
+
     <string name="settings_notification_permission">Enable Notification Access</string>
     <string name="settings_choose_home">Set Default Home Launcher</string>
+    <string name="settings_notification_hint">Enable Slim Launcher in the list</string>
+
+    <string name="about_version">Version %1$s</string>
+    <string name="about_description">Slim is an ultra-minimalist, gesture-based Android launcher built for speed, focus, and single-handed use. Free and open source, forever.</string>
+    <string name="about_who_we_are">Who we are</string>
+    <string name="about_who_we_are_body">Slim is built in the open by OpScaleHub and community contributors. No company, no ads, no telemetry — just people who want a calmer phone.</string>
+    <string name="about_github">GitHub repository</string>
+    <string name="about_website">Website</string>
+    <string name="about_report_bug">Report a bug</string>
+    <string name="about_contact">Contact us</string>
+    <string name="about_license">License: Apache 2.0</string>
+
+    <string name="url_github">https://github.com/OpScaleHub/Slim</string>
+    <string name="url_website">https://opscalehub.github.io/Slim/</string>
+    <string name="url_issues">https://github.com/OpScaleHub/Slim/issues</string>
+    <string name="contact_email">lcommonid@gmail.com</string>
 </resources>

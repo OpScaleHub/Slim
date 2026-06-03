@@ -3,8 +3,19 @@
     <color name="bg_dark">#090a10</color>
     <color name="card_bg">#12131a</color>
     <color name="accent_indigo">#6366f1</color>
+    <color name="border_color">#1f2937</color>
+
+    <!-- Palette used on dark wallpapers (default) -->
     <color name="text_primary">#f8fafc</color>
     <color name="text_secondary">#94a3b8</color>
     <color name="text_muted">#64748b</color>
-    <color name="border_color">#1f2937</color>
+
+    <!-- Palette used on light wallpapers (adaptive switch at runtime) -->
+    <color name="text_primary_on_light">#0f172a</color>
+    <color name="text_secondary_on_light">#334155</color>
+    <color name="text_muted_on_light">#475569</color>
+
+    <!-- Search panel surfaces -->
+    <color name="search_panel_bg">#EE12131a</color>
+    <color name="chip_bg">#2a2c3a</color>
 </resources>

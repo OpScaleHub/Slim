@@ -34,8 +34,9 @@
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#interactive" class="nav-link">Interactive Demo</a>
                 <a href="#download" class="nav-link">Download</a>
+                <a href="#about" class="nav-link">About</a>
             </nav>
-            <a href="https://github.com/opscalehub/slim" class="github-btn" target="_blank" id="github-header-btn">
+            <a href="https://github.com/OpScaleHub/Slim" class="github-btn" target="_blank" id="github-header-btn">
                 <i class="fa-brands fa-github"></i> <span>GitHub</span>
             </a>
         </div>
@@ -51,7 +52,7 @@
                     A premium, gesture-centric Android launcher designed for speed, focus, and single-handed efficiency. Zero clutter, zero distractions, zero telemetry.
                 </p>
                 <div class="hero-actions">
-                    <a href="https://github.com/opscalehub/slim/releases" class="btn btn-primary" target="_blank" id="download-apk-btn">
+                    <a href="https://github.com/OpScaleHub/Slim/releases" class="btn btn-primary" target="_blank" id="download-apk-btn">
                         <i class="fa-solid fa-download"></i> Download APK
                     </a>
                     <a href="#download" class="btn btn-secondary">
@@ -196,7 +197,7 @@
                     <div class="card-content">
                         <div class="card-icon"><i class="fa-solid fa-shield-halved"></i></div>
                         <h3>100% Privacy, No Telemetry</h3>
-                        <p>Unlike proprietary alternatives, Slim does not collect app usage, crash reports, or search inputs. It runs completely offline with zero internet permissions requested.</p>
+                        <p>Slim does not collect app usage, crash reports, or search inputs. Everything runs offline — the only network call it can ever make is the optional, opt-in weather fetch from Open-Meteo, and only if you enable it.</p>
                     </div>
                 </div>
 
@@ -219,8 +220,8 @@
                 <div class="bento-card card-large">
                     <div class="card-content">
                         <div class="card-icon"><i class="fa-solid fa-bell"></i></div>
-                        <h3>Inline Notification Center</h3>
-                        <p>View message notifications right below your favorite app shortcuts. Expand notification stacks, reply inside the launcher card, or swipe to dismiss without opening the notification tray.</p>
+                        <h3>Inline Notification Previews</h3>
+                        <p>See the latest message notifications right below your favorite app shortcuts — know what's waiting before you even open the app or the notification tray.</p>
                     </div>
                     <div class="card-preview notification-mock">
                         <div class="notif-bubble">
@@ -234,6 +235,24 @@
                                 <span class="action-btn dismiss">Dismiss</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Smart Search -->
+                <div class="bento-card">
+                    <div class="card-content">
+                        <div class="card-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                        <h3>Smart Floating Search</h3>
+                        <p>Swipe up and start typing. Results are ranked by relevance — exact starts first, then word matches, then anything containing your query. Recently searched apps appear as quick-launch chips, no favorites required.</p>
+                    </div>
+                </div>
+
+                <!-- Card 6: Configurable -->
+                <div class="bento-card">
+                    <div class="card-content">
+                        <div class="card-icon"><i class="fa-solid fa-sliders"></i></div>
+                        <h3>Make It Yours</h3>
+                        <p>Toggle the clock, date, and weather independently. Pick 12 or 24-hour time, °C or °F, offline or real weather. Settings live inside the "Slim" app entry itself — no buttons cluttering your home screen.</p>
                     </div>
                 </div>
             </div>
@@ -255,7 +274,7 @@
                             <h3>GitHub Releases</h3>
                         </div>
                         <p>Download signed production APK releases directly from the repository tags.</p>
-                        <a href="https://github.com/opscalehub/slim/releases" class="btn btn-primary" target="_blank" id="download-github-releases">Get APK (Direct)</a>
+                        <a href="https://github.com/OpScaleHub/Slim/releases" class="btn btn-primary" target="_blank" id="download-github-releases">Get APK (Direct)</a>
                     </div>
                     
                     <!-- F-Droid Card -->
@@ -272,13 +291,44 @@
         </div>
     </section>
 
+    <!-- Who We Are Section -->
+    <section class="download-section" id="about">
+        <div class="container">
+            <div class="download-box">
+                <h2>Who We Are</h2>
+                <p>Slim is built in the open by <strong>OpScaleHub</strong> and community contributors. No company backing, no ads, no telemetry — just people who want a calmer phone. Every line of code is public, every decision is discussed in the open.</p>
+
+                <div class="download-grid">
+                    <div class="download-card">
+                        <div class="card-head">
+                            <i class="fa-solid fa-comments"></i>
+                            <h3>Get In Touch</h3>
+                        </div>
+                        <p>Questions, ideas, or feedback? We read everything.</p>
+                        <a href="mailto:lcommonid@gmail.com" class="btn btn-secondary" id="contact-email-btn">Email Us</a>
+                    </div>
+
+                    <div class="download-card">
+                        <div class="card-head">
+                            <i class="fa-solid fa-code-pull-request"></i>
+                            <h3>Contribute</h3>
+                        </div>
+                        <p>Bug reports, feature requests, and pull requests are all welcome on GitHub.</p>
+                        <a href="https://github.com/OpScaleHub/Slim/issues" class="btn btn-secondary" target="_blank" id="contribute-btn">Open an Issue</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Footer -->
     <footer class="footer">
         <div class="container footer-container">
             <p>&copy; 2026 Opscalehub. Built under the Apache License 2.0.</p>
             <div class="footer-links">
-                <a href="https://github.com/opscalehub/slim" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
-                <a href="https://github.com/opscalehub/slim/issues" target="_blank"><i class="fa-solid fa-bug"></i> Report Bug</a>
+                <a href="https://github.com/OpScaleHub/Slim" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
+                <a href="https://github.com/OpScaleHub/Slim/issues" target="_blank"><i class="fa-solid fa-bug"></i> Report Bug</a>
+                <a href="mailto:lcommonid@gmail.com"><i class="fa-solid fa-envelope"></i> Contact</a>
             </div>
         </div>
     </footer>

@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:fontFamily="sans-serif-thin"
+            android:text="@string/settings_title"
+            android:textColor="@color/text_primary"
+            android:textSize="32sp"
+            android:textStyle="bold" />
+
+        <!-- ======== HOME SCREEN ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_home" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchShowClock"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_show_clock" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchShowDate"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_show_date" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switch24Hour"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_24_hour" />
+
+        <!-- ======== WEATHER ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_weather" />
+
+        <RadioGroup
+            android:id="@+id/radioWeatherMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/radioWeatherOff"
+                style="@style/SettingsRadio"
+                android:text="@string/settings_weather_off" />
+
+            <RadioButton
+                android:id="@+id/radioWeatherSimulated"
+                style="@style/SettingsRadio"
+                android:text="@string/settings_weather_simulated" />
+
+            <RadioButton
+                android:id="@+id/radioWeatherReal"
+                style="@style/SettingsRadio"
+                android:text="@string/settings_weather_real" />
+        </RadioGroup>
+
+        <!-- City picker, only shown for real weather -->
+        <LinearLayout
+            android:id="@+id/cityInputRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/editCity"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/search_bg"
+                android:hint="@string/settings_weather_city_hint"
+                android:inputType="textCapWords"
+                android:maxLines="1"
+                android:padding="12dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_muted"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/btnSaveCity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@android:string/ok" />
+        </LinearLayout>
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchFahrenheit"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_weather_fahrenheit" />
+
+        <TextView
+            android:id="@+id/txtWeatherPrivacyNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_weather_privacy_note"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <!-- ======== SEARCH ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_search" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchSearchHistory"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_search_history" />
+
+        <TextView
+            android:id="@+id/btnClearHistory"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_clear_history" />
+
+        <!-- ======== GESTURES ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_gestures" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchSwipeUpSearch"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_swipe_up_search" />
+
+        <!-- ======== SYSTEM ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_system" />
+
+        <TextView
+            android:id="@+id/btnDefaultLauncher"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_choose_home" />
+
+        <TextView
+            android:id="@+id/btnNotificationAccess"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_notification_permission" />
+
+        <!-- ======== ABOUT ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_about" />
+
+        <TextView
+            android:id="@+id/txtVersion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/about_description"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/about_who_we_are"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/about_who_we_are_body"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/btnGithub"
+            style="@style/SettingsActionRow"
+            android:text="@string/about_github" />
+
+        <TextView
+            android:id="@+id/btnWebsite"
+            style="@style/SettingsActionRow"
+            android:text="@string/about_website" />
+
+        <TextView
+            android:id="@+id/btnReportBug"
+            style="@style/SettingsActionRow"
+            android:text="@string/about_report_bug" />
+
+        <TextView
+            android:id="@+id/btnContact"
+            style="@style/SettingsActionRow"
+            android:text="@string/about_contact" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="32dp"
+            android:text="@string/about_license"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+</ScrollView>
