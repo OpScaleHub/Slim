@@ -117,7 +117,7 @@ class WaveGestureView @JvmOverloads constructor(
                 textPaint.isFakeBoldText = false
             }
 
-            val currentTextSize = 11f * resources.displayMetrics.density * scale
+            val currentTextSize = 13f * resources.displayMetrics.density * scale
             textPaint.textSize = currentTextSize
 
             // Center text vertically

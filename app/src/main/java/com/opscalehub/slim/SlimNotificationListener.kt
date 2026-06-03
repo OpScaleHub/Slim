@@ -12,8 +12,15 @@ class SlimNotificationListener : NotificationListenerService() {
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
 
-        if (text.isNotEmpty() && !sbn.isOngoing) {
-            val preview = if (title.isNotEmpty()) "$title: $text" else text
+        // Include ongoing notifications too — music players, timers, etc.
+        // Only skip notifications with no readable text at all.
+        val preview = when {
+            title.isNotEmpty() && text.isNotEmpty() -> "$title: $text"
+            title.isNotEmpty() -> title
+            text.isNotEmpty() -> text
+            else -> null
+        }
+        if (preview != null) {
             NotificationRegistry.updateNotification(packageName, preview)
         }
     }

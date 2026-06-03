@@ -961,10 +961,15 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 }
 
                 val preview = NotificationRegistry.getNotificationPreview(app.packageName)
-                if (preview != null && app.isFavorite) {
-                    holder.notificationPreview.visibility = View.VISIBLE
-                    holder.notificationPreview.text = preview
-                    holder.notificationPreview.setTextColor(secondaryTextColor)
+                if (preview != null) {
+                    // Show preview text for favorites, badge-only for others
+                    if (app.isFavorite) {
+                        holder.notificationPreview.visibility = View.VISIBLE
+                        holder.notificationPreview.text = preview
+                        holder.notificationPreview.setTextColor(secondaryTextColor)
+                    } else {
+                        holder.notificationPreview.visibility = View.GONE
+                    }
                     holder.notificationCount.visibility = View.VISIBLE
                     holder.notificationCount.text = "!"
                 } else {
