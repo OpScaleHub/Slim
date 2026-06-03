@@ -638,8 +638,9 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             }
             else -> { // BG_DIMMED (default)
                 // Semi-transparent dark tint drawn between wallpaper and content.
-                // Readable on any wallpaper, doesn't move during transitions.
-                window.setBackgroundDrawable(ColorDrawable(0x1A000000))
+                // 18% black — strong enough for readability on bright wallpapers
+                // without hiding the wallpaper entirely.
+                window.setBackgroundDrawable(ColorDrawable(0x2E000000))
                 window.statusBarColor = android.graphics.Color.TRANSPARENT
                 window.navigationBarColor = android.graphics.Color.TRANSPARENT
             }
