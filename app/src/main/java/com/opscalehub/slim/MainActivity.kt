@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.BatteryManager
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -58,7 +59,11 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private lateinit var txtDate: TextView
     private lateinit var txtWeather: TextView
     private lateinit var txtLetterPopup: TextView
+    private lateinit var statusInfoRow: View
+    private lateinit var txtNotificationSummary: TextView
+    private lateinit var txtBattery: TextView
     private var packageChangeReceiver: BroadcastReceiver? = null
+    private var batteryReceiver: BroadcastReceiver? = null
 
     private lateinit var db: AppDatabase
     private lateinit var repository: AppRepository
@@ -136,6 +141,9 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         txtDate = findViewById(R.id.txtDate)
         txtWeather = findViewById(R.id.txtWeather)
         txtLetterPopup = findViewById(R.id.txtLetterPopup)
+        statusInfoRow = findViewById(R.id.statusInfoRow)
+        txtNotificationSummary = findViewById(R.id.txtNotificationCount)
+        txtBattery = findViewById(R.id.txtBattery)
 
         // Initialize Database, Repository & Preferences
         db = AppDatabase.getDatabase(this)
@@ -262,12 +270,25 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         applyHeaderPreferences()
         applyAdaptiveColors()
         applyBackgroundMode()
+        applyImmersiveMode()
         // Appearance / weather settings may have changed in Settings
         adapter.setShowIcons(prefs.showAppIcons)
         searchAdapter.setShowIcons(prefs.showAppIcons)
         updateWeather()
         // Pick up newly installed/removed apps — with retry for timing (F-Droid etc.)
         scheduleAppRefresh()
+
+        // Battery level receiver for real-time updates
+        if (prefs.immersiveMode) {
+            if (batteryReceiver == null) {
+                batteryReceiver = object : BroadcastReceiver() {
+                    override fun onReceive(context: Context?, intent: Intent?) {
+                        updateBatteryLevel()
+                    }
+                }
+            }
+            registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        }
     }
 
     /**
@@ -614,6 +635,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         handler.removeCallbacks(refreshRetry2)
         NotificationRegistry.unregisterListener()
         packageChangeReceiver?.let { unregisterReceiver(it) }
+        batteryReceiver?.let { try { unregisterReceiver(it) } catch (_: Exception) {} }
     }
 
     /**
@@ -647,9 +669,50 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         }
     }
 
+    /** Hides system status bar and shows launcher-native status info in header. */
+    private fun applyImmersiveMode() {
+        if (prefs.immersiveMode) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.hide(android.view.WindowInsets.Type.statusBars())
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility =
+                    window.decorView.systemUiVisibility or View.SYSTEM_UI_FLAG_FULLSCREEN
+            }
+            statusInfoRow.visibility = View.VISIBLE
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.insetsController?.show(android.view.WindowInsets.Type.statusBars())
+            } else {
+                @Suppress("DEPRECATION")
+                window.decorView.systemUiVisibility =
+                    window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_FULLSCREEN.inv()
+            }
+            statusInfoRow.visibility = View.GONE
+        }
+        updateNotificationSummary()
+        updateBatteryLevel()
+    }
+
+    /** Updates the "● N" notification count shown in the header. */
+    private fun updateNotificationSummary() {
+        val count = NotificationRegistry.getNotificationCount()
+        txtNotificationSummary.text = if (count > 0) "● $count" else "● 0"
+    }
+
+    /** Reads current battery level and shows it in the header. */
+    private fun updateBatteryLevel() {
+        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+        val pct = if (scale > 0) (level * 100 / scale) else -1
+        txtBattery.text = if (pct >= 0) "🔋 $pct%" else "🔋 --%"
+    }
+
     override fun onNotificationsChanged() {
         runOnUiThread {
             updateAdapterData()
+            if (prefs.immersiveMode) updateNotificationSummary()
         }
     }
 

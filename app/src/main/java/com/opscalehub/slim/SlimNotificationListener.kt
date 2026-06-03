@@ -59,4 +59,8 @@ object NotificationRegistry {
     fun getNotificationPreview(packageName: String): String? {
         return activeNotifications[packageName]
     }
+
+    fun getNotificationCount(): Int {
+        return activeNotifications.size
+    }
 }

@@ -78,6 +78,10 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
+        val switchImmersive = findViewById<SwitchMaterial>(R.id.switchImmersiveMode)
+        switchImmersive.isChecked = prefs.immersiveMode
+        switchImmersive.setOnCheckedChangeListener { _, checked -> prefs.immersiveMode = checked }
+
         findViewById<TextView>(R.id.btnHiddenApps).setOnClickListener {
             showHiddenAppsDialog()
         }

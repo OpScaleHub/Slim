@@ -97,6 +97,11 @@ class SlimPreferences(context: Context) {
         get() = prefs.getString(KEY_BACKGROUND_MODE, BG_DIMMED) ?: BG_DIMMED
         set(value) = prefs.edit().putString(KEY_BACKGROUND_MODE, value).apply()
 
+    /** Immersive mode: hide system status bar, show notification count + battery in header. */
+    var immersiveMode: Boolean
+        get() = prefs.getBoolean(KEY_IMMERSIVE_MODE, false)
+        set(value) = prefs.edit().putBoolean(KEY_IMMERSIVE_MODE, value).apply()
+
     // ---- Gestures ----
     var swipeUpForSearch: Boolean
         get() = prefs.getBoolean(KEY_SWIPE_UP_SEARCH, true)
@@ -162,5 +167,6 @@ class SlimPreferences(context: Context) {
 
         private const val KEY_SHOW_APP_ICONS = "show_app_icons"
         private const val KEY_BACKGROUND_MODE = "background_mode"
+        private const val KEY_IMMERSIVE_MODE = "immersive_mode"
     }
 }
