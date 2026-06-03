@@ -79,12 +79,12 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     // Set on ACTION_DOWN when the touch starts on the alphabet index so the
     // swipe-up-for-search gesture never fires while scrubbing letters.
     private var touchStartedOnWave = false
-    // Track last down position and time for reliable swipe detection.
-    // GestureDetector.onFling's e1 can be null when the RecyclerView consumes
-    // the DOWN event — we bypass that entirely for swipe-up.
+    // Track last down position for reliable swipe detection.
+    // GestureDetector.onFling is unreliable when RecyclerView consumes events.
     private var lastDownX = 0f
     private var lastDownY = 0f
-    private var lastDownTime = 0L
+    // Actual height of the system gesture nav zone — read from window insets
+    private var systemGestureHeight = 0
     private var weatherFetchInProgress = false
     private val handler = Handler(Looper.getMainLooper())
     private val returnToFavoritesRunnable = Runnable {
@@ -105,6 +105,22 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Read the real system gesture nav zone height so we never compete with it.
+        // Falls back to 64dp if insets are unavailable.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.decorView.setOnApplyWindowInsetsListener { view, insets ->
+                val gestureInsets = insets.getInsets(android.view.WindowInsets.Type.systemGestures())
+                systemGestureHeight = gestureInsets.bottom
+                // Add a small buffer so even near-miss swipes don't fight the system
+                systemGestureHeight = (systemGestureHeight * 1.3f).toInt()
+                view.onApplyWindowInsets(insets)
+            }
+        }
+        if (systemGestureHeight == 0) {
+            // Pre-R or insets not yet delivered: use a safe fallback
+            systemGestureHeight = (64 * resources.displayMetrics.density).toInt()
+        }
 
         // Initialize UI Elements
         appRecyclerView = findViewById(R.id.appRecyclerView)
@@ -455,25 +471,22 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (ev.action == MotionEvent.ACTION_DOWN) {
-            lastDownX = ev.x
-            lastDownY = ev.y
-            lastDownTime = System.currentTimeMillis()
+            lastDownX = ev.getX(0)
+            lastDownY = ev.getY(0)
             touchStartedOnWave = ev.x >= waveGestureView.left &&
                 ev.y >= waveGestureView.top && ev.y <= waveGestureView.bottom
             resetInactivityTimer()
         }
 
-        // Direct swipe-up detection — bypasses GestureDetector's unreliable onFling
-        // (which loses e1 when RecyclerView consumes the DOWN event).
+        // Reliable swipe-up: pure distance check, no velocity gate.
+        // Uses actual system gesture nav height so we never fight Android's
+        // home/recent-apps gestures. Swipes from the middle of the screen always work.
         if (ev.action == MotionEvent.ACTION_UP && !touchStartedOnWave) {
-            val dy = lastDownY - ev.y
-            val dt = System.currentTimeMillis() - lastDownTime
-            if (dy > 100f && dt > 0) {
-                val velocity = dy / dt * 1000f  // px/s
-                if (velocity > 60f && prefs.swipeUpForSearch && !isAlphabetScrubbing
-                    && searchPanel.visibility != View.VISIBLE) {
-                    showSearchBar()
-                }
+            val inSystemGestureZone = lastDownY > resources.displayMetrics.heightPixels - systemGestureHeight
+            val dy = lastDownY - ev.getY(0)
+            if (!inSystemGestureZone && dy > 60f && prefs.swipeUpForSearch && !isAlphabetScrubbing
+                && searchPanel.visibility != View.VISIBLE) {
+                showSearchBar()
             }
         }
 
