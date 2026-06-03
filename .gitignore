@@ -1,0 +1,39 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Local configuration (machine-specific SDK paths)
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Obsidian workspace state (volatile, per-user)
+.obsidian/workspace.json
+docs/.obsidian/workspace.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# APK / build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Keystores (never commit signing keys)
+*.jks
+*.keystore
+
+# Log files
+*.log
+
+# Kotlin / Java
+*.class
+captures/
+.externalNativeBuild/
+.cxx/
