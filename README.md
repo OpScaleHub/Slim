@@ -1,12 +1,15 @@
 # 📱 Slim Launcher
 
 [![Build Status](https://github.com/OpScaleHub/Slim/actions/workflows/android-build.yml/badge.svg)](https://github.com/OpScaleHub/Slim/actions)
+[![Release](https://img.shields.io/github/v/release/OpScaleHub/Slim?color=6366f1&label=Download)](https://github.com/OpScaleHub/Slim/releases/latest/download/slim-launcher.apk)
 [![F-Droid](https://img.shields.io/badge/F--Droid-Compliant-brightgreen)](docs/distribution/fdroid_publishing.md)
 [![License](https://img.shields.io/github/license/OpScaleHub/Slim?color=blue)](LICENSE)
 
 **Slim Launcher** is an ultra-minimalist, gesture-based Android launcher designed for speed, focus, and single-handed efficiency. Inspired by Niagara Launcher, it replaces your cluttered app drawer with an elegant, responsive vertical list and a dynamic side-scrolling alphabetical wave gesture.
 
 👉 **View the live landing page at [opscalehub.github.io/Slim](https://opscalehub.github.io/Slim/)**
+
+📦 **[Download the latest signed APK](https://github.com/OpScaleHub/Slim/releases/latest/download/slim-launcher.apk)** — every successful build on `main` is automatically signed and published to [GitHub Releases](https://github.com/OpScaleHub/Slim/releases).
 
 > **Note on URLs:** GitHub Pages paths are case-sensitive — the address is `/Slim/` (capital S), matching the repository name. The repository itself is reachable at [github.com/OpScaleHub/Slim](https://github.com/OpScaleHub/Slim).
 

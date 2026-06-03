@@ -37,3 +37,7 @@ Thumbs.db
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Release signing (NEVER commit - backup separately!)
+release.keystore
+release.keystore.password.txt
