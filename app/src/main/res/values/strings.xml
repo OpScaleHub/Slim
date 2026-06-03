@@ -49,6 +49,8 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_show_app_icons">Show app icons</string>
     <string name="settings_show_app_icons_summary">Turn off for a text-only, ultra-minimal list</string>
+    <string name="settings_wallpaper_dimmer">Dim wallpaper behind content</string>
+    <string name="settings_wallpaper_dimmer_summary">Subtle dark overlay improves text readability on busy wallpapers</string>
 
     <!-- Hidden apps -->
     <string name="settings_hidden_apps">Hidden apps</string>

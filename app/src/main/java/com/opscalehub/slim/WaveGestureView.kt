@@ -44,7 +44,7 @@ class WaveGestureView @JvmOverloads constructor(
         color = inactiveColor
         textAlign = Paint.Align.CENTER
         style = Paint.Style.FILL
-        setShadowLayer(4f, 0f, 1f, Color.parseColor("#80000000"))
+        setShadowLayer(3f, 0f, 1f, Color.parseColor("#60000000"))
     }
 
     private val textBounds = Rect()
@@ -107,11 +107,17 @@ class WaveGestureView @JvmOverloads constructor(
                 textPaint.color = activeColor
                 textPaint.isFakeBoldText = true
             } else {
-                textPaint.color = inactiveColor
+                // Fade inactive letters for a more subtle, clean index
+                textPaint.color = Color.argb(
+                    160,
+                    Color.red(inactiveColor),
+                    Color.green(inactiveColor),
+                    Color.blue(inactiveColor)
+                )
                 textPaint.isFakeBoldText = false
             }
 
-            val currentTextSize = 10f * resources.displayMetrics.density * scale
+            val currentTextSize = 11f * resources.displayMetrics.density * scale
             textPaint.textSize = currentTextSize
 
             // Center text vertically

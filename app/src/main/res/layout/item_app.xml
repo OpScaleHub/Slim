@@ -4,23 +4,30 @@
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingVertical="10dp"
-    android:paddingHorizontal="8dp"
+    android:paddingVertical="7dp"
+    android:paddingHorizontal="16dp"
     android:background="?android:attr/selectableItemBackground">
 
-    <!-- App Icon -->
-    <ImageView
-        android:id="@+id/imgAppIcon"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:scaleType="centerInside"
-        android:src="@android:drawable/sym_def_app_icon" />
+    <!-- Icon inside visible rounded container — the key modern-launcher signature -->
+    <FrameLayout
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:background="@drawable/icon_container_bg">
 
-    <!-- App Content Description (Name + Notifications) -->
+        <ImageView
+            android:id="@+id/imgAppIcon"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_gravity="center"
+            android:scaleType="fitCenter"
+            android:src="@android:drawable/sym_def_app_icon" />
+    </FrameLayout>
+
+    <!-- App name + notification preview -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="14dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -35,18 +42,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:fontFamily="sans-serif-medium" />
+                android:textSize="15sp"
+                android:fontFamily="sans-serif"
+                android:letterSpacing="0.01" />
 
-            <!-- Work profile badge -->
             <TextView
                 android:id="@+id/txtWorkBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/chip_bg"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="1dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="2dp"
                 android:text="@string/work_badge"
                 android:textColor="@color/text_secondary"
                 android:textSize="10sp"
@@ -61,21 +68,23 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:visibility="gone" />
     </LinearLayout>
 
-    <!-- Notification Count/Badge -->
+    <!-- Notification badge -->
     <TextView
         android:id="@+id/txtNotificationCount"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@android:color/holo_red_dark"
+        android:background="@drawable/badge_notification"
         android:textColor="@android:color/white"
         android:textSize="10sp"
         android:textStyle="bold"
-        android:paddingHorizontal="6dp"
-        android:paddingVertical="2dp"
+        android:paddingHorizontal="7dp"
+        android:paddingVertical="3dp"
+        android:minWidth="18dp"
+        android:gravity="center"
         android:visibility="gone" />
 
 </LinearLayout>

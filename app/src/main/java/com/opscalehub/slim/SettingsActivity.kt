@@ -63,6 +63,10 @@ class SettingsActivity : AppCompatActivity() {
         switchIcons.isChecked = prefs.showAppIcons
         switchIcons.setOnCheckedChangeListener { _, checked -> prefs.showAppIcons = checked }
 
+        val switchDimmer = findViewById<SwitchMaterial>(R.id.switchWallpaperDimmer)
+        switchDimmer.isChecked = prefs.wallpaperDimmer
+        switchDimmer.setOnCheckedChangeListener { _, checked -> prefs.wallpaperDimmer = checked }
+
         findViewById<TextView>(R.id.btnHiddenApps).setOnClickListener {
             showHiddenAppsDialog()
         }

@@ -3,8 +3,10 @@ package com.opscalehub.slim
 import android.app.AlertDialog
 import android.app.WallpaperColors
 import android.app.WallpaperManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -51,6 +53,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private lateinit var txtDate: TextView
     private lateinit var txtWeather: TextView
     private lateinit var txtLetterPopup: TextView
+    private lateinit var wallpaperDimmer: View
+    private var packageChangeReceiver: BroadcastReceiver? = null
 
     private lateinit var db: AppDatabase
     private lateinit var repository: AppRepository
@@ -95,6 +99,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         txtDate = findViewById(R.id.txtDate)
         txtWeather = findViewById(R.id.txtWeather)
         txtLetterPopup = findViewById(R.id.txtLetterPopup)
+        wallpaperDimmer = findViewById(R.id.wallpaperDimmer)
 
         // Initialize Database, Repository & Preferences
         db = AppDatabase.getDatabase(this)
@@ -204,12 +209,19 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 }
             }
         }
+
+        // Register for package install/remove broadcasts so newly installed
+        // apps appear immediately without waiting for the next onResume cycle.
+        val receiver = PackageChangeReceiver { repository.refreshApps() }
+        packageChangeReceiver = receiver
+        registerReceiver(receiver, PackageChangeReceiver.createIntentFilter())
     }
 
     override fun onResume() {
         super.onResume()
         applyHeaderPreferences()
         applyAdaptiveColors()
+        applyWallpaperDimmer()
         // Appearance / weather settings may have changed in Settings
         adapter.setShowIcons(prefs.showAppIcons)
         searchAdapter.setShowIcons(prefs.showAppIcons)
@@ -524,6 +536,12 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         clockTimer.cancel()
         handler.removeCallbacks(returnToFavoritesRunnable)
         NotificationRegistry.unregisterListener()
+        packageChangeReceiver?.let { unregisterReceiver(it) }
+    }
+
+    /** Shows or hides the full-screen wallpaper dim overlay per user preference. */
+    private fun applyWallpaperDimmer() {
+        wallpaperDimmer.visibility = if (prefs.wallpaperDimmer) View.VISIBLE else View.GONE
     }
 
     override fun onNotificationsChanged() {
@@ -756,8 +774,10 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             return if (viewType == ViewType.HEADER.ordinal) {
                 val view = inflater.inflate(android.R.layout.simple_list_item_1, parent, false)
                 val textView = view.findViewById<TextView>(android.R.id.text1)
-                textView.textSize = 13f
-                textView.setPadding(0, 24, 0, 8)
+                textView.textSize = 11f
+                textView.setPadding(16, 28, 16, 6)
+                textView.setAllCaps(true)
+                textView.letterSpacing = 0.06f
                 HeaderViewHolder(view)
             } else {
                 val view = inflater.inflate(R.layout.item_app, parent, false)
