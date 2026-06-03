@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
@@ -40,6 +41,10 @@ import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListener, NotificationRegistry.NotificationUpdateListener {
 
+    companion object {
+        private const val SETTINGS_LETTER = "⚙"
+    }
+
     private lateinit var appRecyclerView: RecyclerView
     private lateinit var searchResultsRecyclerView: RecyclerView
     private lateinit var waveGestureView: WaveGestureView
@@ -53,7 +58,6 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private lateinit var txtDate: TextView
     private lateinit var txtWeather: TextView
     private lateinit var txtLetterPopup: TextView
-    private lateinit var wallpaperDimmer: View
     private var packageChangeReceiver: BroadcastReceiver? = null
 
     private lateinit var db: AppDatabase
@@ -75,10 +79,27 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     // Set on ACTION_DOWN when the touch starts on the alphabet index so the
     // swipe-up-for-search gesture never fires while scrubbing letters.
     private var touchStartedOnWave = false
+    // Track last down position and time for reliable swipe detection.
+    // GestureDetector.onFling's e1 can be null when the RecyclerView consumes
+    // the DOWN event — we bypass that entirely for swipe-up.
+    private var lastDownX = 0f
+    private var lastDownY = 0f
+    private var lastDownTime = 0L
     private var weatherFetchInProgress = false
     private val handler = Handler(Looper.getMainLooper())
     private val returnToFavoritesRunnable = Runnable {
         exitAlphabetMode()
+    }
+    // Retry runnables for app-refresh (F-Droid/Revanced install timing).
+    // Each fires once; retry2 is the final attempt — no infinite loop.
+    private var refreshRetryCount = 0
+    private val refreshRetry1 = Runnable {
+        refreshRetryCount++
+        lifecycleScope.launch { repository.refreshApps() }
+    }
+    private val refreshRetry2 = Runnable {
+        refreshRetryCount++
+        lifecycleScope.launch { repository.refreshApps() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,7 +120,6 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         txtDate = findViewById(R.id.txtDate)
         txtWeather = findViewById(R.id.txtWeather)
         txtLetterPopup = findViewById(R.id.txtLetterPopup)
-        wallpaperDimmer = findViewById(R.id.wallpaperDimmer)
 
         // Initialize Database, Repository & Preferences
         db = AppDatabase.getDatabase(this)
@@ -154,8 +174,12 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 velocityX: Float,
                 velocityY: Float
             ): Boolean {
-                val xDiff = e2.x - (e1?.x ?: 0f)
-                val yDiff = (e1?.y ?: 0f) - e2.y
+                // Use tracked down position as fallback when e1 is null
+                // (can happen during RecyclerView layout passes)
+                val downX = e1?.x ?: lastDownX
+                val downY = e1?.y ?: lastDownY
+                val xDiff = e2.x - downX
+                val yDiff = downY - e2.y
 
                 // Swipe up opens search — only from the home (favorites) state,
                 // never while browsing the alphabetical list or scrubbing.
@@ -212,7 +236,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
         // Register for package install/remove broadcasts so newly installed
         // apps appear immediately without waiting for the next onResume cycle.
-        val receiver = PackageChangeReceiver { repository.refreshApps() }
+        val receiver = PackageChangeReceiver { scheduleAppRefresh() }
         packageChangeReceiver = receiver
         registerReceiver(receiver, PackageChangeReceiver.createIntentFilter())
     }
@@ -221,15 +245,35 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         super.onResume()
         applyHeaderPreferences()
         applyAdaptiveColors()
-        applyWallpaperDimmer()
+        applyBackgroundMode()
         // Appearance / weather settings may have changed in Settings
         adapter.setShowIcons(prefs.showAppIcons)
         searchAdapter.setShowIcons(prefs.showAppIcons)
         updateWeather()
-        // Pick up newly installed/removed apps and profile changes
+        // Pick up newly installed/removed apps — with retry for timing (F-Droid etc.)
+        scheduleAppRefresh()
+    }
+
+    /**
+     * Refreshes the app list now, then retries after 800ms and 2500ms.
+     * Some installers (F-Droid, Revanced Manager) finish writing the APK
+     * before the system registers the launcher activity — the retries
+     * catch apps that weren't visible yet on the first attempt.
+     * Retries fire ONCE each (no infinite loop) to avoid spamming
+     * notifyDataSetChanged and breaking swipe gestures.
+     */
+    private fun scheduleAppRefresh() {
+        // Cancel any pending retries (call-site may have changed)
+        handler.removeCallbacks(refreshRetry1)
+        handler.removeCallbacks(refreshRetry2)
+        refreshRetryCount = 0
+
         lifecycleScope.launch {
             repository.refreshApps()
         }
+        // Retry after 800ms and 2500ms — each fires exactly once
+        handler.postDelayed(refreshRetry1, 800)
+        handler.postDelayed(refreshRetry2, 2500)
     }
 
     // Unified app click handling for both the home list and search results
@@ -411,12 +455,30 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (ev.action == MotionEvent.ACTION_DOWN) {
-            // Touches starting on the alphabet index belong to letter scrubbing —
-            // they must never trigger the swipe-up search gesture.
+            lastDownX = ev.x
+            lastDownY = ev.y
+            lastDownTime = System.currentTimeMillis()
             touchStartedOnWave = ev.x >= waveGestureView.left &&
                 ev.y >= waveGestureView.top && ev.y <= waveGestureView.bottom
             resetInactivityTimer()
         }
+
+        // Direct swipe-up detection — bypasses GestureDetector's unreliable onFling
+        // (which loses e1 when RecyclerView consumes the DOWN event).
+        if (ev.action == MotionEvent.ACTION_UP && !touchStartedOnWave) {
+            val dy = lastDownY - ev.y
+            val dt = System.currentTimeMillis() - lastDownTime
+            if (dy > 100f && dt > 0) {
+                val velocity = dy / dt * 1000f  // px/s
+                if (velocity > 60f && prefs.swipeUpForSearch && !isAlphabetScrubbing
+                    && searchPanel.visibility != View.VISIBLE) {
+                    showSearchBar()
+                }
+            }
+        }
+
+        // Still pass events to GestureDetector for swipe-down (notifications)
+        // and horizontal swipe (exit alphabet mode).
         if (!touchStartedOnWave) {
             gestureDetector.onTouchEvent(ev)
         }
@@ -535,13 +597,40 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         super.onDestroy()
         clockTimer.cancel()
         handler.removeCallbacks(returnToFavoritesRunnable)
+        handler.removeCallbacks(refreshRetry1)
+        handler.removeCallbacks(refreshRetry2)
         NotificationRegistry.unregisterListener()
         packageChangeReceiver?.let { unregisterReceiver(it) }
     }
 
-    /** Shows or hides the full-screen wallpaper dim overlay per user preference. */
-    private fun applyWallpaperDimmer() {
-        wallpaperDimmer.visibility = if (prefs.wallpaperDimmer) View.VISIBLE else View.GONE
+    /**
+     * Applies background mode at the WINDOW level — not with a hacky overlay View.
+     * The window background is drawn behind all content and stays fixed during
+     * transitions, unlike a content View which moves with the activity animation.
+     */
+    private fun applyBackgroundMode() {
+        when (prefs.backgroundMode) {
+            SlimPreferences.BG_TRANSPARENT -> {
+                // Wallpaper fully visible — window background is transparent
+                window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            }
+            SlimPreferences.BG_SOLID_BLACK -> {
+                // Opaque black at window level — wallpaper is completely covered,
+                // stays rock-solid during all transitions and gestures.
+                window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+                window.statusBarColor = android.graphics.Color.BLACK
+                window.navigationBarColor = android.graphics.Color.BLACK
+            }
+            else -> { // BG_DIMMED (default)
+                // Semi-transparent dark tint drawn between wallpaper and content.
+                // Readable on any wallpaper, doesn't move during transitions.
+                window.setBackgroundDrawable(ColorDrawable(0x1A000000))
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            }
+        }
     }
 
     override fun onNotificationsChanged() {
@@ -558,10 +647,24 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         val letters = allApps
             .map { it.displayLabel.firstOrNull()?.uppercaseChar()?.toString() ?: "#" }
             .distinct()
+            .toMutableList()
+        // Append settings gear at the end of the alphabet index
+        letters.add(SETTINGS_LETTER)
         waveGestureView.setLetters(letters)
     }
 
     override fun onLetterSelected(letter: String) {
+        // Settings gear: open Slim Settings directly
+        if (letter == SETTINGS_LETTER) {
+            txtLetterPopup.visibility = View.VISIBLE
+            txtLetterPopup.text = letter
+            handler.postDelayed({
+                txtLetterPopup.visibility = View.GONE
+                startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+            }, 200)
+            return
+        }
+
         if (!isAlphabetScrubbing) {
             isAlphabetScrubbing = true
             updateAdapterData()
@@ -650,6 +753,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 }
                 items.add(AdapterItem(ViewType.APP, appItem = app))
             }
+            // Settings shortcut at the very end of the alphabetical list
+            items.add(AdapterItem(ViewType.SETTINGS, headerText = SETTINGS_LETTER))
         }
 
         filteredList = items
@@ -671,7 +776,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         val options = arrayOf(
             favoriteOption,
             getString(R.string.option_rename),
-            getString(R.string.option_hide)
+            getString(R.string.option_hide),
+            getString(R.string.option_app_info)
         )
 
         AlertDialog.Builder(this)
@@ -692,9 +798,22 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                             ).show()
                         }
                     }
+                    3 -> openAppInfo(appItem.packageName)
                 }
             }
             .show()
+    }
+
+    /** Opens the system App Info screen for force-stop, uninstall, permissions, etc. */
+    private fun openAppInfo(packageName: String) {
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = android.net.Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, R.string.app_info_failed, Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** Rename dialog: empty input restores the app's original name. */
@@ -720,7 +839,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             .show()
     }
 
-    enum class ViewType { HEADER, APP }
+    enum class ViewType { HEADER, APP, SETTINGS }
     data class AdapterItem(
         val type: ViewType,
         val headerText: String = "",
@@ -771,17 +890,24 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
-            return if (viewType == ViewType.HEADER.ordinal) {
-                val view = inflater.inflate(android.R.layout.simple_list_item_1, parent, false)
-                val textView = view.findViewById<TextView>(android.R.id.text1)
-                textView.textSize = 11f
-                textView.setPadding(16, 28, 16, 6)
-                textView.setAllCaps(true)
-                textView.letterSpacing = 0.06f
-                HeaderViewHolder(view)
-            } else {
-                val view = inflater.inflate(R.layout.item_app, parent, false)
-                AppViewHolder(view)
+            return when (viewType) {
+                ViewType.HEADER.ordinal -> {
+                    val view = inflater.inflate(android.R.layout.simple_list_item_1, parent, false)
+                    val textView = view.findViewById<TextView>(android.R.id.text1)
+                    textView.textSize = 11f
+                    textView.setPadding(16, 28, 16, 6)
+                    textView.setAllCaps(true)
+                    textView.letterSpacing = 0.06f
+                    HeaderViewHolder(view)
+                }
+                ViewType.SETTINGS.ordinal -> {
+                    val view = inflater.inflate(R.layout.item_app, parent, false)
+                    SettingsViewHolder(view)
+                }
+                else -> {
+                    val view = inflater.inflate(R.layout.item_app, parent, false)
+                    AppViewHolder(view)
+                }
             }
         }
 
@@ -807,7 +933,6 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                     val icon = iconCache[app.id] ?: try {
                         var resolvedIcon = pm.getApplicationIcon(app.packageName)
                         if (app.isWorkProfile) {
-                            // System adds the briefcase badge for work-profile apps
                             val user = userManager.getUserForSerialNumber(app.userSerial)
                             if (user != null) {
                                 resolvedIcon = pm.getUserBadgedIcon(resolvedIcon, user)
@@ -840,6 +965,19 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                     clickListener(app, true)
                     true
                 }
+            } else if (holder is SettingsViewHolder) {
+                // Settings shortcut row
+                holder.appIcon.visibility = View.GONE
+                holder.appName.text = context.getString(R.string.settings_title)
+                holder.appName.setTextColor(accentColor)
+                holder.workBadge.visibility = View.GONE
+                holder.notificationPreview.visibility = View.GONE
+                holder.notificationCount.visibility = View.GONE
+                holder.itemView.setOnClickListener {
+                    val intent = Intent(context, SettingsActivity::class.java)
+                    context.startActivity(intent)
+                }
+                holder.itemView.setOnLongClickListener(null)
             }
         }
 
@@ -847,6 +985,14 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
         class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view)
         class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val appIcon: ImageView = view.findViewById(R.id.imgAppIcon)
+            val appName: TextView = view.findViewById(R.id.txtAppName)
+            val workBadge: TextView = view.findViewById(R.id.txtWorkBadge)
+            val notificationPreview: TextView = view.findViewById(R.id.txtNotificationPreview)
+            val notificationCount: TextView = view.findViewById(R.id.txtNotificationCount)
+        }
+        /** Reuses item_app layout but styled as a settings shortcut. */
+        class SettingsViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val appIcon: ImageView = view.findViewById(R.id.imgAppIcon)
             val appName: TextView = view.findViewById(R.id.txtAppName)
             val workBadge: TextView = view.findViewById(R.id.txtWorkBadge)

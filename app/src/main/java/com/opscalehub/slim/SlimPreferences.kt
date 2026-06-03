@@ -91,11 +91,11 @@ class SlimPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_APP_ICONS, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_APP_ICONS, value).apply()
 
-    // ---- Appearance (cont.) ----
-    /** Subtle full-screen overlay that dims the wallpaper for better text readability. */
-    var wallpaperDimmer: Boolean
-        get() = prefs.getBoolean(KEY_WALLPAPER_DIMMER, true)
-        set(value) = prefs.edit().putBoolean(KEY_WALLPAPER_DIMMER, value).apply()
+    // ---- Background ----
+    /** Background mode: [BG_TRANSPARENT], [BG_DIMMED], or [BG_SOLID_BLACK]. */
+    var backgroundMode: String
+        get() = prefs.getString(KEY_BACKGROUND_MODE, BG_DIMMED) ?: BG_DIMMED
+        set(value) = prefs.edit().putString(KEY_BACKGROUND_MODE, value).apply()
 
     // ---- Gestures ----
     var swipeUpForSearch: Boolean
@@ -156,7 +156,11 @@ class SlimPreferences(context: Context) {
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val KEY_SWIPE_UP_SEARCH = "swipe_up_search"
         private const val KEY_SWIPE_DOWN_NOTIFICATIONS = "swipe_down_notifications"
+        const val BG_TRANSPARENT = "transparent"
+        const val BG_DIMMED = "dimmed"
+        const val BG_SOLID_BLACK = "solid_black"
+
         private const val KEY_SHOW_APP_ICONS = "show_app_icons"
-        private const val KEY_WALLPAPER_DIMMER = "wallpaper_dimmer"
+        private const val KEY_BACKGROUND_MODE = "background_mode"
     }
 }

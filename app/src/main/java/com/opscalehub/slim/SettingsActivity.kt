@@ -63,9 +63,20 @@ class SettingsActivity : AppCompatActivity() {
         switchIcons.isChecked = prefs.showAppIcons
         switchIcons.setOnCheckedChangeListener { _, checked -> prefs.showAppIcons = checked }
 
-        val switchDimmer = findViewById<SwitchMaterial>(R.id.switchWallpaperDimmer)
-        switchDimmer.isChecked = prefs.wallpaperDimmer
-        switchDimmer.setOnCheckedChangeListener { _, checked -> prefs.wallpaperDimmer = checked }
+        // Background mode radio group
+        val radioBg = findViewById<RadioGroup>(R.id.radioBackgroundMode)
+        radioBg.check(when (prefs.backgroundMode) {
+            SlimPreferences.BG_TRANSPARENT -> R.id.radioBgTransparent
+            SlimPreferences.BG_SOLID_BLACK -> R.id.radioBgSolidBlack
+            else -> R.id.radioBgDimmed
+        })
+        radioBg.setOnCheckedChangeListener { _, id ->
+            prefs.backgroundMode = when (id) {
+                R.id.radioBgTransparent -> SlimPreferences.BG_TRANSPARENT
+                R.id.radioBgSolidBlack -> SlimPreferences.BG_SOLID_BLACK
+                else -> SlimPreferences.BG_DIMMED
+            }
+        }
 
         findViewById<TextView>(R.id.btnHiddenApps).setOnClickListener {
             showHiddenAppsDialog()

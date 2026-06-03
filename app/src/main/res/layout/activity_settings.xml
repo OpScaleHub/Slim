@@ -133,17 +133,31 @@
             android:textColor="@color/text_muted"
             android:textSize="12sp" />
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/switchWallpaperDimmer"
-            style="@style/SettingsSwitch"
-            android:text="@string/settings_wallpaper_dimmer" />
-
         <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_background" />
+
+        <RadioGroup
+            android:id="@+id/radioBackgroundMode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/settings_wallpaper_dimmer_summary"
-            android:textColor="@color/text_muted"
-            android:textSize="12sp" />
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/radioBgTransparent"
+                style="@style/SettingsRadio"
+                android:text="@string/settings_background_transparent" />
+
+            <RadioButton
+                android:id="@+id/radioBgDimmed"
+                style="@style/SettingsRadio"
+                android:text="@string/settings_background_dimmed" />
+
+            <RadioButton
+                android:id="@+id/radioBgSolidBlack"
+                style="@style/SettingsRadio"
+                android:text="@string/settings_background_solid_black" />
+        </RadioGroup>
 
         <TextView
             android:id="@+id/btnHiddenApps"

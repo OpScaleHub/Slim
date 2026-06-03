@@ -107,9 +107,9 @@ class WaveGestureView @JvmOverloads constructor(
                 textPaint.color = activeColor
                 textPaint.isFakeBoldText = true
             } else {
-                // Fade inactive letters for a more subtle, clean index
+                // Fade inactive letters subtly — keep them legible even on black
                 textPaint.color = Color.argb(
-                    160,
+                    210,
                     Color.red(inactiveColor),
                     Color.green(inactiveColor),
                     Color.blue(inactiveColor)

@@ -12,6 +12,8 @@
     <string name="option_remove_favorite">Remove from Favorites</string>
     <string name="option_rename">Rename</string>
     <string name="option_hide">Hide app</string>
+    <string name="option_app_info">App info</string>
+    <string name="app_info_failed">Could not open app info</string>
     <string name="app_hidden_toast">%1$s hidden — manage hidden apps in Slim Settings</string>
 
     <!-- Settings screen -->
@@ -49,8 +51,10 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_show_app_icons">Show app icons</string>
     <string name="settings_show_app_icons_summary">Turn off for a text-only, ultra-minimal list</string>
-    <string name="settings_wallpaper_dimmer">Dim wallpaper behind content</string>
-    <string name="settings_wallpaper_dimmer_summary">Subtle dark overlay improves text readability on busy wallpapers</string>
+    <string name="settings_section_background">Background</string>
+    <string name="settings_background_transparent">Show wallpaper</string>
+    <string name="settings_background_dimmed">Dim wallpaper</string>
+    <string name="settings_background_solid_black">Solid black</string>
 
     <!-- Hidden apps -->
     <string name="settings_hidden_apps">Hidden apps</string>
