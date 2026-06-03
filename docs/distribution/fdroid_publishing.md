@@ -25,7 +25,7 @@ F-Droid builds all applications directly from source using their build servers. 
 
 ---
 
-## ⚙️ F-Droid Build Configuration (`com.slim.launcher.yml`)
+## ⚙️ F-Droid Build Configuration (`com.opscalehub.slim.yml`)
 
 This YAML metadata file is submitted to the F-Droid metadata repository (`fdroiddata`). It instructs F-Droid's build bot on how to compile our APK.
 

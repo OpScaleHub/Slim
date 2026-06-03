@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- App list bars (filled rounded rects) -->
+    <path
+        android:fillColor="#f8fafc"
+        android:pathData="M34,39 L60,39 A3,3 0 0 1 60,45 L34,45 A3,3 0 0 1 34,39 Z" />
+    <path
+        android:fillColor="#6366f1"
+        android:pathData="M34,51 L54,51 A3,3 0 0 1 54,57 L34,57 A3,3 0 0 1 34,51 Z" />
+    <path
+        android:fillColor="#94a3b8"
+        android:pathData="M34,63 L58,63 A3,3 0 0 1 58,69 L34,69 A3,3 0 0 1 34,63 Z" />
+
+    <!-- Wave alphabet index: middle dot magnified and displaced inward -->
+    <path
+        android:fillColor="#64748b"
+        android:pathData="M75,42 m-2.5,0 a2.5,2.5 0 1 1 5,0 a2.5,2.5 0 1 1 -5,0" />
+    <path
+        android:fillColor="#6366f1"
+        android:pathData="M71,54 m-4,0 a4,4 0 1 1 8,0 a4,4 0 1 1 -8,0" />
+    <path
+        android:fillColor="#64748b"
+        android:pathData="M75,66 m-2.5,0 a2.5,2.5 0 1 1 5,0 a2.5,2.5 0 1 1 -5,0" />
+</vector>
