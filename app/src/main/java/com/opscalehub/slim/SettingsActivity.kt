@@ -1,5 +1,6 @@
 package com.opscalehub.slim
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -10,10 +11,13 @@ import android.widget.EditText
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Slim Settings: feature toggles, weather configuration, search options,
@@ -24,20 +28,131 @@ import kotlinx.coroutines.launch
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var prefs: SlimPreferences
+    private lateinit var repository: AppRepository
     private val weatherService = WeatherService()
+
+    // SAF pickers for settings backup/restore
+    private val exportLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            if (uri != null) exportBackup(uri)
+        }
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) importBackup(uri)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
         prefs = SlimPreferences(this)
+        repository = AppRepository(this, AppDatabase.getDatabase(this).appDao())
 
         bindHomeSection()
+        bindAppearanceSection()
         bindWeatherSection()
         bindSearchSection()
         bindGesturesSection()
+        bindBackupSection()
         bindSystemSection()
         bindAboutSection()
+    }
+
+    private fun bindAppearanceSection() {
+        val switchIcons = findViewById<SwitchMaterial>(R.id.switchShowAppIcons)
+        switchIcons.isChecked = prefs.showAppIcons
+        switchIcons.setOnCheckedChangeListener { _, checked -> prefs.showAppIcons = checked }
+
+        findViewById<TextView>(R.id.btnHiddenApps).setOnClickListener {
+            showHiddenAppsDialog()
+        }
+    }
+
+    /** Lists hidden apps; tapping one unhides it. */
+    private fun showHiddenAppsDialog() {
+        lifecycleScope.launch {
+            val hiddenApps = repository.getHiddenApps()
+            if (hiddenApps.isEmpty()) {
+                Toast.makeText(this@SettingsActivity, R.string.settings_no_hidden_apps, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val labels = hiddenApps.map { it.displayLabel }.toTypedArray()
+            AlertDialog.Builder(this@SettingsActivity)
+                .setTitle(getString(R.string.settings_hidden_apps) + " — " + getString(R.string.settings_unhide_hint))
+                .setItems(labels) { _, which ->
+                    lifecycleScope.launch {
+                        repository.setAppHidden(hiddenApps[which].id, false)
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+    }
+
+    private fun bindBackupSection() {
+        findViewById<TextView>(R.id.btnExportSettings).setOnClickListener {
+            exportLauncher.launch("slim-backup.json")
+        }
+        findViewById<TextView>(R.id.btnImportSettings).setOnClickListener {
+            importLauncher.launch(arrayOf("application/json", "text/*", "application/octet-stream"))
+        }
+    }
+
+    /** Writes preferences + app customizations (favorites/hidden/renames) to a JSON file. */
+    private fun exportBackup(uri: Uri) {
+        lifecycleScope.launch {
+            try {
+                val backup = JSONObject()
+                backup.put("preferences", prefs.exportToJson())
+
+                val apps = JSONArray()
+                for (app in repository.getCustomizedApps()) {
+                    apps.put(JSONObject().apply {
+                        put("id", app.id)
+                        put("isFavorite", app.isFavorite)
+                        put("isHidden", app.isHidden)
+                        put("customLabel", app.customLabel ?: JSONObject.NULL)
+                    })
+                }
+                backup.put("apps", apps)
+
+                contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(backup.toString(2).toByteArray())
+                }
+                Toast.makeText(this@SettingsActivity, R.string.settings_export_done, Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(this@SettingsActivity, R.string.settings_export_failed, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** Restores preferences + app customizations from a backup file. */
+    private fun importBackup(uri: Uri) {
+        lifecycleScope.launch {
+            try {
+                val content = contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.bufferedReader().readText()
+                } ?: throw IllegalStateException("Empty file")
+
+                val backup = JSONObject(content)
+                prefs.importFromJson(backup.getJSONObject("preferences"))
+
+                val apps = backup.optJSONArray("apps") ?: JSONArray()
+                for (i in 0 until apps.length()) {
+                    val app = apps.getJSONObject(i)
+                    val id = app.getString("id")
+                    repository.setAppAsFavorite(id, app.optBoolean("isFavorite", false))
+                    repository.setAppHidden(id, app.optBoolean("isHidden", false))
+                    val label = if (app.isNull("customLabel")) null else app.getString("customLabel")
+                    repository.setCustomLabel(id, label)
+                }
+
+                Toast.makeText(this@SettingsActivity, R.string.settings_import_done, Toast.LENGTH_LONG).show()
+                recreate() // Reload toggles with imported values
+            } catch (e: Exception) {
+                Toast.makeText(this@SettingsActivity, R.string.settings_import_failed, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun bindHomeSection() {
@@ -143,6 +258,12 @@ class SettingsActivity : AppCompatActivity() {
         val switchSwipeUp = findViewById<SwitchMaterial>(R.id.switchSwipeUpSearch)
         switchSwipeUp.isChecked = prefs.swipeUpForSearch
         switchSwipeUp.setOnCheckedChangeListener { _, checked -> prefs.swipeUpForSearch = checked }
+
+        val switchSwipeDown = findViewById<SwitchMaterial>(R.id.switchSwipeDownNotifications)
+        switchSwipeDown.isChecked = prefs.swipeDownForNotifications
+        switchSwipeDown.setOnCheckedChangeListener { _, checked ->
+            prefs.swipeDownForNotifications = checked
+        }
     }
 
     private fun bindSystemSection() {

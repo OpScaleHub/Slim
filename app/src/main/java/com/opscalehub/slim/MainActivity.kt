@@ -24,6 +24,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.lifecycleScope
@@ -159,6 +160,15 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                         return true
                     }
                 }
+                // Swipe down opens the system notification shade
+                if (yDiff < -120f && Math.abs(velocityY) > 80f) {
+                    if (prefs.swipeDownForNotifications && !isAlphabetScrubbing &&
+                        searchPanel.visibility != View.VISIBLE
+                    ) {
+                        expandNotificationShade()
+                        return true
+                    }
+                }
                 // Horizontal swipes exit alphabet apps view back to favorites list
                 if (Math.abs(xDiff) > 120f && Math.abs(velocityX) > 80f) {
                     if (isAlphabetScrubbing) {
@@ -177,10 +187,10 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         lifecycleScope.launch {
             repository.refreshApps()
 
-            // Observe cached apps
+            // Observe cached apps (sorted by display name so renames re-sort correctly)
             launch {
                 repository.allAppsFlow.collectLatest { apps ->
-                    allApps = apps
+                    allApps = apps.sortedBy { it.displayLabel.lowercase(Locale.getDefault()) }
                     updateAlphabetLetters()
                     updateAdapterData()
                 }
@@ -200,8 +210,14 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         super.onResume()
         applyHeaderPreferences()
         applyAdaptiveColors()
-        // Weather mode may have changed in Settings
+        // Appearance / weather settings may have changed in Settings
+        adapter.setShowIcons(prefs.showAppIcons)
+        searchAdapter.setShowIcons(prefs.showAppIcons)
         updateWeather()
+        // Pick up newly installed/removed apps and profile changes
+        lifecycleScope.launch {
+            repository.refreshApps()
+        }
     }
 
     // Unified app click handling for both the home list and search results
@@ -214,10 +230,10 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         }
 
         if (fromSearch) {
-            prefs.addToSearchHistory(appItem.packageName)
+            prefs.addToSearchHistory(appItem.id)
         }
         lifecycleScope.launch {
-            repository.recordAppLaunch(appItem.packageName)
+            repository.recordAppLaunch(appItem.id)
         }
         repository.launchApp(appItem)
 
@@ -311,6 +327,23 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 txtWeather.text = text
             }
             weatherFetchInProgress = false
+        }
+    }
+
+    /**
+     * Expands the system notification shade. Uses the StatusBarManager
+     * reflection approach common to FOSS launchers; silently no-ops on
+     * devices/versions where the hidden API is blocked.
+     */
+    @android.annotation.SuppressLint("WrongConstant", "PrivateApi")
+    private fun expandNotificationShade() {
+        try {
+            val statusBarService = getSystemService("statusbar")
+            val statusBarManager = Class.forName("android.app.StatusBarManager")
+            val expandMethod = statusBarManager.getMethod("expandNotificationsPanel")
+            expandMethod.invoke(statusBarService)
+        } catch (e: Exception) {
+            // Hidden API unavailable on this device — gesture does nothing
         }
     }
 
@@ -446,7 +479,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             return
         }
         val historyApps = prefs.getSearchHistory()
-            .mapNotNull { pkg -> allApps.find { it.packageName == pkg } }
+            .mapNotNull { id -> allApps.find { it.id == id } }
         if (historyApps.isEmpty()) {
             historyScroll.visibility = View.GONE
             return
@@ -456,7 +489,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         val density = resources.displayMetrics.density
         for (app in historyApps) {
             val chip = TextView(this).apply {
-                text = app.label
+                text = app.displayLabel
                 setTextColor(getColor(R.color.text_primary))
                 textSize = 13f
                 background = getDrawable(R.drawable.chip_bg)
@@ -505,7 +538,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private fun updateAlphabetLetters() {
         if (allApps.isEmpty()) return
         val letters = allApps
-            .map { it.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#" }
+            .map { it.displayLabel.firstOrNull()?.uppercaseChar()?.toString() ?: "#" }
             .distinct()
         waveGestureView.setLetters(letters)
     }
@@ -553,7 +586,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
         val q = query.lowercase(Locale.getDefault())
         val ranked = allApps.mapNotNull { app ->
-            val label = app.label.lowercase(Locale.getDefault())
+            val label = app.displayLabel.lowercase(Locale.getDefault())
             val rank = when {
                 label.startsWith(q) -> 0
                 label.split(' ', '-', '_', '.').any { it.startsWith(q) } -> 1
@@ -562,7 +595,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             }
             Pair(rank, app)
         }
-            .sortedWith(compareBy({ it.first }, { it.second.label.lowercase(Locale.getDefault()) }))
+            .sortedWith(compareBy({ it.first }, { it.second.displayLabel.lowercase(Locale.getDefault()) }))
             .map { it.second }
 
         val items = ranked.map { AdapterItem(ViewType.APP, appItem = it) }
@@ -592,7 +625,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             items.add(AdapterItem(ViewType.HEADER, headerText = getString(R.string.title_all_apps)))
             var currentHeader = ""
             for (app in allApps) {
-                val firstChar = app.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
+                val firstChar = app.displayLabel.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
                 if (firstChar != currentHeader) {
                     currentHeader = firstChar
                     items.add(AdapterItem(ViewType.HEADER, headerText = currentHeader))
@@ -612,23 +645,60 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             return
         }
 
-        val options = if (appItem.isFavorite) {
-            arrayOf("Remove from Favorites")
+        val favoriteOption = if (appItem.isFavorite) {
+            getString(R.string.option_remove_favorite)
         } else {
-            arrayOf("Add to Favorites")
+            getString(R.string.option_add_favorite)
         }
+        val options = arrayOf(
+            favoriteOption,
+            getString(R.string.option_rename),
+            getString(R.string.option_hide)
+        )
 
         AlertDialog.Builder(this)
-            .setTitle(appItem.label)
+            .setTitle(appItem.displayLabel)
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> {
-                        lifecycleScope.launch {
-                            repository.setAppAsFavorite(appItem.packageName, !appItem.isFavorite)
+                    0 -> lifecycleScope.launch {
+                        repository.setAppAsFavorite(appItem.id, !appItem.isFavorite)
+                    }
+                    1 -> showRenameDialog(appItem)
+                    2 -> lifecycleScope.launch {
+                        repository.setAppHidden(appItem.id, true)
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@MainActivity,
+                                getString(R.string.app_hidden_toast, appItem.displayLabel),
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
                     }
                 }
             }
+            .show()
+    }
+
+    /** Rename dialog: empty input restores the app's original name. */
+    private fun showRenameDialog(appItem: AppItem) {
+        val input = EditText(this).apply {
+            setText(appItem.displayLabel)
+            setSelectAllOnFocus(true)
+            hint = appItem.label
+        }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.option_rename))
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val newLabel = input.text.toString().trim()
+                lifecycleScope.launch {
+                    repository.setCustomLabel(
+                        appItem.id,
+                        if (newLabel.isEmpty() || newLabel == appItem.label) null else newLabel
+                    )
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
@@ -646,12 +716,17 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         private val pm: PackageManager = context.packageManager
+        private val userManager =
+            context.getSystemService(Context.USER_SERVICE) as android.os.UserManager
         private val iconCache = mutableMapOf<String, Drawable>()
 
         // Adaptive palette (kept readable on any wallpaper)
         private var primaryTextColor = context.getColor(R.color.text_primary)
         private var secondaryTextColor = context.getColor(R.color.text_secondary)
         private var accentColor = context.getColor(R.color.accent_indigo)
+
+        // Text-only mode (Settings > Appearance)
+        private var showIcons = true
 
         fun updateItems(newItems: List<AdapterItem>) {
             items = newItems
@@ -663,6 +738,12 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             primaryTextColor = primary
             secondaryTextColor = secondary
             accentColor = accent
+            notifyDataSetChanged()
+        }
+
+        fun setShowIcons(show: Boolean) {
+            if (show == showIcons) return
+            showIcons = show
             notifyDataSetChanged()
         }
 
@@ -692,17 +773,33 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 textView.setTextColor(accentColor)
             } else if (holder is AppViewHolder && item.appItem != null) {
                 val app = item.appItem
-                holder.appName.text = app.label
+                holder.appName.text = app.displayLabel
                 holder.appName.setTextColor(primaryTextColor)
 
-                val icon = iconCache[app.packageName] ?: try {
-                    val resolvedIcon = pm.getApplicationIcon(app.packageName)
-                    iconCache[app.packageName] = resolvedIcon
-                    resolvedIcon
-                } catch (e: Exception) {
-                    context.getDrawable(android.R.drawable.sym_def_app_icon)
+                // Work profile badge
+                holder.workBadge.visibility = if (app.isWorkProfile) View.VISIBLE else View.GONE
+
+                // Text-only mode hides icons entirely
+                if (!showIcons) {
+                    holder.appIcon.visibility = View.GONE
+                } else {
+                    holder.appIcon.visibility = View.VISIBLE
+                    val icon = iconCache[app.id] ?: try {
+                        var resolvedIcon = pm.getApplicationIcon(app.packageName)
+                        if (app.isWorkProfile) {
+                            // System adds the briefcase badge for work-profile apps
+                            val user = userManager.getUserForSerialNumber(app.userSerial)
+                            if (user != null) {
+                                resolvedIcon = pm.getUserBadgedIcon(resolvedIcon, user)
+                            }
+                        }
+                        iconCache[app.id] = resolvedIcon
+                        resolvedIcon
+                    } catch (e: Exception) {
+                        context.getDrawable(android.R.drawable.sym_def_app_icon)
+                    }
+                    holder.appIcon.setImageDrawable(icon)
                 }
-                holder.appIcon.setImageDrawable(icon)
 
                 val preview = NotificationRegistry.getNotificationPreview(app.packageName)
                 if (preview != null && app.isFavorite) {
@@ -732,6 +829,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val appIcon: ImageView = view.findViewById(R.id.imgAppIcon)
             val appName: TextView = view.findViewById(R.id.txtAppName)
+            val workBadge: TextView = view.findViewById(R.id.txtWorkBadge)
             val notificationPreview: TextView = view.findViewById(R.id.txtNotificationPreview)
             val notificationCount: TextView = view.findViewById(R.id.txtNotificationCount)
         }

@@ -116,6 +116,28 @@
             android:textSize="12sp"
             android:visibility="gone" />
 
+        <!-- ======== APPEARANCE ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_appearance" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchShowAppIcons"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_show_app_icons" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_show_app_icons_summary"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btnHiddenApps"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_hidden_apps" />
+
         <!-- ======== SEARCH ======== -->
         <TextView
             style="@style/SettingsSectionHeader"
@@ -140,6 +162,26 @@
             android:id="@+id/switchSwipeUpSearch"
             style="@style/SettingsSwitch"
             android:text="@string/settings_swipe_up_search" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchSwipeDownNotifications"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_swipe_down_notifications" />
+
+        <!-- ======== BACKUP & RESTORE ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_backup" />
+
+        <TextView
+            android:id="@+id/btnExportSettings"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_export" />
+
+        <TextView
+            android:id="@+id/btnImportSettings"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_import" />
 
         <!-- ======== SYSTEM ======== -->
         <TextView

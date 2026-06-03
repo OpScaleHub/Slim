@@ -5,6 +5,14 @@
     <string name="title_recent_searches">Recent</string>
     <string name="hint_search">Search apps…</string>
     <string name="search_no_results">No apps found</string>
+    <string name="work_badge">WORK</string>
+
+    <!-- App long-press options -->
+    <string name="option_add_favorite">Add to Favorites</string>
+    <string name="option_remove_favorite">Remove from Favorites</string>
+    <string name="option_rename">Rename</string>
+    <string name="option_hide">Hide app</string>
+    <string name="app_hidden_toast">%1$s hidden — manage hidden apps in Slim Settings</string>
 
     <!-- Settings screen -->
     <string name="settings_title">Slim Settings</string>
@@ -35,6 +43,26 @@
     <string name="settings_history_cleared">Search history cleared</string>
 
     <string name="settings_swipe_up_search">Swipe up to open search</string>
+    <string name="settings_swipe_down_notifications">Swipe down to open notifications</string>
+
+    <!-- Appearance -->
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_show_app_icons">Show app icons</string>
+    <string name="settings_show_app_icons_summary">Turn off for a text-only, ultra-minimal list</string>
+
+    <!-- Hidden apps -->
+    <string name="settings_hidden_apps">Hidden apps</string>
+    <string name="settings_no_hidden_apps">No hidden apps</string>
+    <string name="settings_unhide_hint">Tap an app to unhide it</string>
+
+    <!-- Backup / Restore -->
+    <string name="settings_section_backup">Backup &amp; Restore</string>
+    <string name="settings_export">Export settings &amp; customizations</string>
+    <string name="settings_import">Import from backup</string>
+    <string name="settings_export_done">Backup saved</string>
+    <string name="settings_export_failed">Could not save backup</string>
+    <string name="settings_import_done">Backup restored — favorites, hidden apps and renames will apply as apps are re-scanned</string>
+    <string name="settings_import_failed">Could not read backup file</string>
 
     <string name="settings_notification_permission">Enable Notification Access</string>
     <string name="settings_choose_home">Set Default Home Launcher</string>

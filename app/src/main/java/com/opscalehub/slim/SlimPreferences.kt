@@ -85,10 +85,47 @@ class SlimPreferences(context: Context) {
         prefs.edit().remove(KEY_SEARCH_HISTORY).apply()
     }
 
+    // ---- Appearance ----
+    /** Text-only mode: hide app icons for an ultra-minimal list. */
+    var showAppIcons: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_APP_ICONS, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_APP_ICONS, value).apply()
+
     // ---- Gestures ----
     var swipeUpForSearch: Boolean
         get() = prefs.getBoolean(KEY_SWIPE_UP_SEARCH, true)
         set(value) = prefs.edit().putBoolean(KEY_SWIPE_UP_SEARCH, value).apply()
+
+    /** Swipe down anywhere on the home screen to open the notification shade. */
+    var swipeDownForNotifications: Boolean
+        get() = prefs.getBoolean(KEY_SWIPE_DOWN_NOTIFICATIONS, true)
+        set(value) = prefs.edit().putBoolean(KEY_SWIPE_DOWN_NOTIFICATIONS, value).apply()
+
+    // ---- Backup / Restore ----
+
+    /** Serializes every user preference to JSON (for settings backup). */
+    fun exportToJson(): org.json.JSONObject {
+        val json = org.json.JSONObject()
+        for ((key, value) in prefs.all) {
+            json.put(key, value)
+        }
+        return json
+    }
+
+    /** Restores preferences from a backup created by [exportToJson]. */
+    fun importFromJson(json: org.json.JSONObject) {
+        val editor = prefs.edit()
+        for (key in json.keys()) {
+            when (val value = json.get(key)) {
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Double -> editor.putFloat(key, value.toFloat())
+                is String -> editor.putString(key, value)
+            }
+        }
+        editor.apply()
+    }
 
     companion object {
         private const val PREFS_NAME = "slim_launcher_prefs"
@@ -112,5 +149,7 @@ class SlimPreferences(context: Context) {
         private const val KEY_SEARCH_HISTORY_ENABLED = "search_history_enabled"
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val KEY_SWIPE_UP_SEARCH = "swipe_up_search"
+        private const val KEY_SWIPE_DOWN_NOTIFICATIONS = "swipe_down_notifications"
+        private const val KEY_SHOW_APP_ICONS = "show_app_icons"
     }
 }

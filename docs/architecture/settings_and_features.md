@@ -97,7 +97,30 @@ The launcher draws directly on the system wallpaper, so readability is handled a
 |---|---|---|
 | Swipe up | Home (favorites) state | Open search panel (if enabled in Settings) |
 | Swipe up | Alphabet browsing / scrubbing | **Nothing** — scrolls the list normally |
+| Swipe down | Home (favorites) state | Open the system notification shade (if enabled) |
 | Touch starting on alphabet index | Anywhere | Letter scrubbing only; never triggers search |
 | Horizontal swipe | Alphabet browsing | Return to favorites |
 | Back press | Search open | Close search |
 | Back press | Alphabet browsing | Return to favorites |
+| Long-press app | Any list | Options: favorite, rename, hide |
+
+## 👔 Work Profile Support
+
+App identity is `packageName/className/userSerial`, so the same package can exist in both the personal and work profile. `AppRepository.refreshApps()` iterates `LauncherApps.getProfiles()`, tags each app with its profile's serial number, and launches via `LauncherApps.startMainActivity()` with the correct `UserHandle`. Work apps show a **WORK** badge and a system-badged icon.
+
+## 🙈 Hide & Rename
+
+Long-press any app for: favorite toggle, **Rename** (custom display label used in list, sort, search, and alphabet grouping), or **Hide** (excluded from list and search). Hidden apps are managed from *Settings → Appearance → Hidden apps*; tapping one unhides it. Renaming to an empty string restores the original label.
+
+## 💾 Backup & Restore
+
+*Settings → Backup & Restore* exports a single JSON file (via the system file picker, no storage permission needed) containing:
+
+- All `SlimPreferences` keys
+- Per-app customizations: favorites, hidden flags, custom labels (keyed by app id)
+
+Import applies preferences immediately and re-applies app customizations by id. Apps not currently installed simply don't match — their customizations re-apply if the app is reinstalled and rescanned under the same id.
+
+## 📥 Notification Shade Gesture
+
+Swipe down on the home screen calls `StatusBarManager.expandNotificationsPanel()` via reflection (the same approach used by Lawnchair and other FOSS launchers). On devices/ROMs where the hidden API is blocked, the gesture silently no-ops. Toggleable in *Settings → Gestures*.

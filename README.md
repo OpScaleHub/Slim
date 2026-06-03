@@ -23,6 +23,11 @@
 *   **Configurable Home Screen**: Toggle the clock, date, and weather independently; choose 12/24-hour time — all from Slim Settings.
 *   **Weather, your way**: Off, *Ambient* (an offline seasonal estimate — no network), or *Real weather* (opt-in, powered by the key-less [Open-Meteo](https://open-meteo.com) API for the city you choose).
 *   **Adaptive Readability**: Text colors automatically adapt to light or dark wallpapers, with Material You dynamic accent colors on Android 12+.
+*   **Work Profile Support**: Apps from your work profile appear in the list with a WORK badge and badged icon, and launch into the correct profile.
+*   **Hide & Rename Apps**: Long-press any app to hide it from the list/search or give it a custom name. Hidden apps are managed from Settings.
+*   **Text-Only Mode**: Turn off app icons entirely for the most minimal launcher possible.
+*   **Gesture Shortcuts**: Swipe up for search, swipe down for the notification shade — both toggleable.
+*   **Backup & Restore**: Export your settings, favorites, hidden apps, and renames to a JSON file; import them on a new device.
 *   **Privacy-First**: No analytics, no tracking, no accounts. The launcher works fully offline — the *only* network call it can ever make is the optional Open-Meteo weather fetch, and only if you turn it on.
 
 ### Slim Settings
@@ -32,9 +37,11 @@ Slim has no persistent settings button cluttering the home screen. To open setti
 | Section | Options |
 |---|---|
 | Home Screen | Show/hide clock, show/hide date, 12/24-hour format |
+| Appearance | Show/hide app icons (text-only mode), manage hidden apps |
 | Weather | Off / Ambient (offline) / Real (Open-Meteo), city, °C/°F |
 | Search | Remember recent searches, clear history |
-| Gestures | Enable/disable swipe-up search |
+| Gestures | Swipe-up search, swipe-down notification shade |
+| Backup & Restore | Export/import settings, favorites, hidden apps, and renames |
 | System | Set default launcher, notification access |
 | About | Version, who we are, GitHub, website, report a bug, contact |
 
