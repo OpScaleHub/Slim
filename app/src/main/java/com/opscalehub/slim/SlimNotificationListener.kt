@@ -60,6 +60,11 @@ object NotificationRegistry {
         return activeNotifications[packageName]
     }
 
+    /** Packages with at least one active notification — used to surface them on home. */
+    fun getActivePackages(): Set<String> {
+        return activeNotifications.keys.toSet()
+    }
+
     fun getNotificationCount(): Int {
         return activeNotifications.size
     }

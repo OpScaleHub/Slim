@@ -31,6 +31,11 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var repository: AppRepository
     private val weatherService = WeatherService()
 
+    // Default-launcher (RoleManager HOME) request — must run for-result so the
+    // system sees our calling package, otherwise the dialog bails immediately.
+    private val defaultHomeLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+
     // SAF pickers for settings backup/restore
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -287,7 +292,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun bindSystemSection() {
         findViewById<TextView>(R.id.btnDefaultLauncher).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_HOME_SETTINGS))
+            defaultHomeLauncher.launch(DefaultLauncherHelper.requestIntent(this))
         }
         findViewById<TextView>(R.id.btnNotificationAccess).setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))

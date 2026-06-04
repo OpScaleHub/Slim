@@ -85,10 +85,13 @@
                 android:id="@+id/txtNotificationCount"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:fontFamily="sans-serif"
-                android:text="● 0"
+                android:paddingVertical="2dp"
+                android:paddingEnd="4dp"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="12sp"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/txtBattery"
@@ -244,7 +247,7 @@
     <!-- Alphabet scrubber (right edge) -->
     <com.opscalehub.slim.WaveGestureView
         android:id="@+id/waveGestureView"
-        android:layout_width="40dp"
+        android:layout_width="48dp"
         android:layout_height="0dp"
         android:layout_marginVertical="24dp"
         app:layout_constraintBottom_toBottomOf="parent"

@@ -22,11 +22,11 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -44,16 +44,21 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
     companion object {
         private const val SETTINGS_LETTER = "⚙"
+        // Minimum gap between real-weather fetch attempts, including failed ones.
+        // The clock ticks every second and used to re-fire a request on every
+        // tick until one succeeded — that self-inflicted hammering is what
+        // tripped Open-Meteo's "too many requests" limit and left it stuck.
+        private const val WEATHER_RETRY_INTERVAL_MS = 60_000L
     }
 
     private lateinit var appRecyclerView: RecyclerView
+    private lateinit var headerLayout: View
     private lateinit var searchResultsRecyclerView: RecyclerView
     private lateinit var waveGestureView: WaveGestureView
     private lateinit var searchEditText: EditText
     private lateinit var searchPanel: View
     private lateinit var searchScrim: View
     private lateinit var historyScroll: HorizontalScrollView
-    private lateinit var historyChipsContainer: LinearLayout
     private lateinit var txtNoResults: TextView
     private lateinit var txtClock: TextView
     private lateinit var txtDate: TextView
@@ -91,6 +96,18 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     // Actual height of the system gesture nav zone — read from window insets
     private var systemGestureHeight = 0
     private var weatherFetchInProgress = false
+    // Prompt to become the default launcher at most once per process so we
+    // nudge after a fresh install without nagging on every resume.
+    private var defaultHomePrompted = false
+    // The RoleManager HOME request must run for-result so the system can read
+    // our calling package; plain startActivity() gives it a null caller and the
+    // dialog bails instantly. The result is ignored — onResume re-checks state.
+    private val defaultHomeLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { }
+    // Last time we *attempted* a real-weather fetch (success or failure), used
+    // to throttle retries so a failing endpoint doesn't get hammered.
+    private var lastWeatherAttemptTime = 0L
     private val handler = Handler(Looper.getMainLooper())
     private val returnToFavoritesRunnable = Runnable {
         exitAlphabetMode()
@@ -111,31 +128,15 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Read the real system gesture nav zone height so we never compete with it.
-        // Falls back to 64dp if insets are unavailable.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.decorView.setOnApplyWindowInsetsListener { view, insets ->
-                val gestureInsets = insets.getInsets(android.view.WindowInsets.Type.systemGestures())
-                systemGestureHeight = gestureInsets.bottom
-                // Add a small buffer so even near-miss swipes don't fight the system
-                systemGestureHeight = (systemGestureHeight * 1.3f).toInt()
-                view.onApplyWindowInsets(insets)
-            }
-        }
-        if (systemGestureHeight == 0) {
-            // Pre-R or insets not yet delivered: use a safe fallback
-            systemGestureHeight = (64 * resources.displayMetrics.density).toInt()
-        }
-
         // Initialize UI Elements
         appRecyclerView = findViewById(R.id.appRecyclerView)
+        headerLayout = findViewById(R.id.headerLayout)
         searchResultsRecyclerView = findViewById(R.id.searchResultsRecyclerView)
         waveGestureView = findViewById(R.id.waveGestureView)
         searchEditText = findViewById(R.id.searchEditText)
         searchPanel = findViewById(R.id.searchPanel)
         searchScrim = findViewById(R.id.searchScrim)
         historyScroll = findViewById(R.id.historyScroll)
-        historyChipsContainer = findViewById(R.id.historyChipsContainer)
         txtNoResults = findViewById(R.id.txtNoResults)
         txtClock = findViewById(R.id.txtClock)
         txtDate = findViewById(R.id.txtDate)
@@ -144,6 +145,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         statusInfoRow = findViewById(R.id.statusInfoRow)
         txtNotificationSummary = findViewById(R.id.txtNotificationCount)
         txtBattery = findViewById(R.id.txtBattery)
+
+        setupWindowInsets()
 
         // Initialize Database, Repository & Preferences
         db = AppDatabase.getDatabase(this)
@@ -179,6 +182,11 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         // Tapping the weather area opens Slim Settings (weather section)
         txtWeather.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
+        // Tapping the header notification bell opens the system shade
+        txtNotificationSummary.setOnClickListener {
+            expandNotificationShade()
         }
 
         // Search functional trigger
@@ -265,8 +273,85 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         registerReceiver(receiver, PackageChangeReceiver.createIntentFilter())
     }
 
+    /**
+     * Draws the launcher edge-to-edge so our window background owns the entire
+     * screen — crucially the status-bar strip. Without this, immersive mode
+     * hides the status bar but the window doesn't extend into that area, so the
+     * wallpaper shows through as a bright empty band above the (black) content.
+     *
+     * To keep the layout correct in both modes we re-apply the live system-bar
+     * insets as padding: the header clears the status bar when it's visible and
+     * the app list clears the navigation bar. When immersive hides the status
+     * bar its top inset becomes 0, so the content simply fills the freed strip.
+     */
+    private fun setupWindowInsets() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            // Pre-R: keep the legacy fullscreen flags (set in applyImmersiveMode)
+            // and a safe gesture-zone fallback.
+            systemGestureHeight = (64 * resources.displayMetrics.density).toInt()
+            return
+        }
+        window.setDecorFitsSystemWindows(false)
+        val baseHeaderTop = headerLayout.paddingTop
+        val baseListBottom = appRecyclerView.paddingBottom
+        window.decorView.setOnApplyWindowInsetsListener { view, insets ->
+            val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
+            val gestureInsets = insets.getInsets(android.view.WindowInsets.Type.systemGestures())
+            // Add a small buffer so even near-miss swipes don't fight the system.
+            systemGestureHeight = (gestureInsets.bottom * 1.3f).toInt()
+            if (systemGestureHeight == 0) {
+                systemGestureHeight = (64 * resources.displayMetrics.density).toInt()
+            }
+            headerLayout.setPadding(
+                headerLayout.paddingLeft, baseHeaderTop + bars.top,
+                headerLayout.paddingRight, headerLayout.paddingBottom
+            )
+            appRecyclerView.setPadding(
+                appRecyclerView.paddingLeft, appRecyclerView.paddingTop,
+                appRecyclerView.paddingRight, baseListBottom + bars.bottom
+            )
+            view.onApplyWindowInsets(insets)
+        }
+    }
+
+    /**
+     * Re-assert immersive mode whenever we regain focus. The system tends to
+     * restore the status bar after dialogs, the notification shade, app
+     * switches, etc., so a launcher has to re-hide it on focus or it silently
+     * creeps back — which made immersive mode feel fragile.
+     */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && ::prefs.isInitialized && prefs.immersiveMode &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        ) {
+            window.insetsController?.hide(android.view.WindowInsets.Type.statusBars())
+        }
+    }
+
+    /**
+     * If Slim isn't the default Home app (e.g. right after an install, which
+     * wipes the assignment), show the one-tap RoleManager dialog to reclaim it.
+     * Fires at most once per process so a declined prompt doesn't keep popping.
+     */
+    private fun maybePromptDefaultLauncher() {
+        if (defaultHomePrompted) return
+        if (DefaultLauncherHelper.isDefaultHome(this)) return
+        // Auto-prompt only where the one-tap dialog exists (Q+); on older
+        // versions silently dumping the user into Home settings would be jarring
+        // — the Settings button still covers them.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        defaultHomePrompted = true
+        try {
+            defaultHomeLauncher.launch(DefaultLauncherHelper.requestIntent(this))
+        } catch (e: Exception) {
+            // Role unavailable on this device — Settings button remains the path
+        }
+    }
+
     override fun onResume() {
         super.onResume()
+        maybePromptDefaultLauncher()
         applyHeaderPreferences()
         applyAdaptiveColors()
         applyBackgroundMode()
@@ -367,7 +452,16 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             SlimPreferences.WEATHER_REAL -> {
                 txtWeather.visibility = View.VISIBLE
                 val cached = prefs.lastWeatherText
-                txtWeather.text = if (cached.isNotEmpty()) cached else "📍 Set city"
+                val cityConfigured = !prefs.weatherLatitude.isNaN() && !prefs.weatherLongitude.isNaN()
+                // Only prompt "Set city" when no city is actually configured.
+                // When a city is set but the forecast hasn't arrived yet (pending
+                // or a transient fetch failure), show the city name instead of
+                // misleadingly telling the user to set a city they already set.
+                txtWeather.text = when {
+                    cached.isNotEmpty() -> cached
+                    cityConfigured -> "📍 ${prefs.weatherCity}"
+                    else -> "📍 Set city"
+                }
                 maybeRefreshRealWeather()
             }
             else -> {
@@ -406,8 +500,16 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         val lat = prefs.weatherLatitude
         val lon = prefs.weatherLongitude
         if (lat.isNaN() || lon.isNaN()) return // No city configured yet
-        val cacheAge = System.currentTimeMillis() - prefs.lastWeatherFetchTime
-        if (cacheAge < WeatherService.REFRESH_INTERVAL_MS) return
+
+        val now = System.currentTimeMillis()
+        // Skip if we already have weather that's still fresh.
+        val haveFreshCache = prefs.lastWeatherText.isNotEmpty() &&
+            (now - prefs.lastWeatherFetchTime) < WeatherService.REFRESH_INTERVAL_MS
+        if (haveFreshCache) return
+        // Throttle attempts (successes and failures alike) so the per-second
+        // clock tick can't spin up back-to-back requests.
+        if (now - lastWeatherAttemptTime < WEATHER_RETRY_INTERVAL_MS) return
+        lastWeatherAttemptTime = now
 
         weatherFetchInProgress = true
         lifecycleScope.launch {
@@ -552,9 +654,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 .setDuration(280)
                 .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
                 .start()
-            updateHistoryChips()
-            searchAdapter.updateItems(emptyList())
-            txtNoResults.visibility = View.GONE
+            showRecentApps()
             searchEditText.requestFocus()
             handler.postDelayed({
                 val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -579,40 +679,33 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         }
     }
 
-    /** Shows recently searched apps as quick-launch chips above the results. */
-    private fun updateHistoryChips() {
-        historyChipsContainer.removeAllViews()
+    /**
+     * Shows recently searched apps as a vertical list (with icons, via the
+     * search adapter) when the query is empty — icons make a recently used
+     * app far quicker to spot than text-only chips did.
+     */
+    private fun showRecentApps() {
+        // The old horizontal chip strip is retired; keep it hidden.
+        historyScroll.visibility = View.GONE
+        txtNoResults.visibility = View.GONE
+
         if (!prefs.searchHistoryEnabled) {
-            historyScroll.visibility = View.GONE
+            searchAdapter.updateItems(emptyList())
             return
         }
         val historyApps = prefs.getSearchHistory()
             .mapNotNull { id -> allApps.find { it.id == id } }
         if (historyApps.isEmpty()) {
-            historyScroll.visibility = View.GONE
+            searchAdapter.updateItems(emptyList())
             return
         }
 
-        historyScroll.visibility = View.VISIBLE
-        val density = resources.displayMetrics.density
+        val items = mutableListOf<AdapterItem>()
+        items.add(AdapterItem(ViewType.HEADER, headerText = getString(R.string.title_recent_searches)))
         for (app in historyApps) {
-            val chip = TextView(this).apply {
-                text = app.displayLabel
-                setTextColor(getColor(R.color.text_primary))
-                textSize = 13f
-                background = getDrawable(R.drawable.chip_bg)
-                setPadding(
-                    (14 * density).toInt(), (8 * density).toInt(),
-                    (14 * density).toInt(), (8 * density).toInt()
-                )
-                setOnClickListener { onAppClicked(app, fromSearch = true) }
-            }
-            val params = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { marginEnd = (8 * density).toInt() }
-            historyChipsContainer.addView(chip, params)
+            items.add(AdapterItem(ViewType.APP, appItem = app))
         }
+        searchAdapter.updateItems(items)
     }
 
     @Deprecated("Deprecated in Java")
@@ -647,6 +740,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         when (prefs.backgroundMode) {
             SlimPreferences.BG_TRANSPARENT -> {
                 // Wallpaper fully visible — window background is transparent
+                setShowWallpaper(true)
                 window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
                 window.statusBarColor = android.graphics.Color.TRANSPARENT
                 window.navigationBarColor = android.graphics.Color.TRANSPARENT
@@ -654,18 +748,33 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             SlimPreferences.BG_SOLID_BLACK -> {
                 // Opaque black at window level — wallpaper is completely covered,
                 // stays rock-solid during all transitions and gestures.
+                // Drop FLAG_SHOW_WALLPAPER too: otherwise the system keeps
+                // compositing the wallpaper in any area the window background
+                // doesn't paint — most visibly the status-bar strip once
+                // immersive mode hides the bar, leaving a bright empty band.
+                setShowWallpaper(false)
                 window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
                 window.statusBarColor = android.graphics.Color.BLACK
                 window.navigationBarColor = android.graphics.Color.BLACK
             }
-            else -> { // BG_DIMMED (default)
+            else -> { // BG_DIMMED
                 // Semi-transparent dark tint drawn between wallpaper and content.
                 // 18% black — strong enough for readability on bright wallpapers
                 // without hiding the wallpaper entirely.
+                setShowWallpaper(true)
                 window.setBackgroundDrawable(ColorDrawable(0x2E000000))
                 window.statusBarColor = android.graphics.Color.TRANSPARENT
                 window.navigationBarColor = android.graphics.Color.TRANSPARENT
             }
+        }
+    }
+
+    /** Toggles the window's wallpaper flag so opaque modes don't leak wallpaper. */
+    private fun setShowWallpaper(show: Boolean) {
+        if (show) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         }
     }
 
@@ -694,10 +803,19 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         updateBatteryLevel()
     }
 
-    /** Updates the "● N" notification count shown in the header. */
+    /**
+     * Updates the header notification chip (immersive mode only). Shows a bell
+     * with the active-notification count, and hides entirely at zero so an
+     * empty "0" never lingers as visual noise.
+     */
     private fun updateNotificationSummary() {
         val count = NotificationRegistry.getNotificationCount()
-        txtNotificationSummary.text = if (count > 0) "● $count" else "● 0"
+        if (count > 0) {
+            txtNotificationSummary.visibility = View.VISIBLE
+            txtNotificationSummary.text = "🔔 $count"
+        } else {
+            txtNotificationSummary.visibility = View.GONE
+        }
     }
 
     /** Reads current battery level and shows it in the header. */
@@ -724,24 +842,14 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         val letters = allApps
             .map { it.displayLabel.firstOrNull()?.uppercaseChar()?.toString() ?: "#" }
             .distinct()
-            .toMutableList()
-        // Append settings gear at the end of the alphabet index
-        letters.add(SETTINGS_LETTER)
+        // The settings gear used to live here, but sitting right after the last
+        // letter it was easy to mis-tap on scrub-release. Settings is still
+        // reachable via the row at the end of the all-apps list, the Slim entry,
+        // and the weather chip — so the index stays letters-only.
         waveGestureView.setLetters(letters)
     }
 
     override fun onLetterSelected(letter: String) {
-        // Settings gear: open Slim Settings directly
-        if (letter == SETTINGS_LETTER) {
-            txtLetterPopup.visibility = View.VISIBLE
-            txtLetterPopup.text = letter
-            handler.postDelayed({
-                txtLetterPopup.visibility = View.GONE
-                startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
-            }, 200)
-            return
-        }
-
         if (!isAlphabetScrubbing) {
             isAlphabetScrubbing = true
             updateAdapterData()
@@ -775,9 +883,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
      */
     private fun filterApps(query: String) {
         if (query.isEmpty()) {
-            searchAdapter.updateItems(emptyList())
-            txtNoResults.visibility = View.GONE
-            updateHistoryChips()
+            showRecentApps()
             return
         }
         historyScroll.visibility = View.GONE
@@ -815,6 +921,25 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             items.add(AdapterItem(ViewType.HEADER, headerText = getString(R.string.title_favorites)))
             for (fav in favList) {
                 items.add(AdapterItem(ViewType.APP, appItem = fav))
+            }
+        }
+
+        // 1b. Active: apps with a live notification that aren't already a favorite.
+        // This temporary section surfaces apps like Gmail the moment something
+        // arrives and disappears again when the notification is cleared — so they
+        // no longer hide until you scrub or search. Home view only; the full
+        // alphabetical list below is already exhaustive while scrubbing.
+        if (!isAlphabetScrubbing && allApps.isNotEmpty()) {
+            val favIds = favList.map { it.id }.toSet()
+            val activePackages = NotificationRegistry.getActivePackages()
+            val activeApps = allApps.filter {
+                it.packageName in activePackages && it.id !in favIds
+            }
+            if (activeApps.isNotEmpty()) {
+                items.add(AdapterItem(ViewType.HEADER, headerText = getString(R.string.title_active)))
+                for (app in activeApps) {
+                    items.add(AdapterItem(ViewType.APP, appItem = app, forceNotificationPreview = true))
+                }
             }
         }
 
@@ -920,7 +1045,10 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     data class AdapterItem(
         val type: ViewType,
         val headerText: String = "",
-        val appItem: AppItem? = null
+        val appItem: AppItem? = null,
+        // Force the notification preview line visible even for non-favorites
+        // (used by the home "Active" section).
+        val forceNotificationPreview: Boolean = false
     )
 
     class AppListAdapter(
@@ -1025,8 +1153,9 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
                 val preview = NotificationRegistry.getNotificationPreview(app.packageName)
                 if (preview != null) {
-                    // Show preview text for favorites, badge-only for others
-                    if (app.isFavorite) {
+                    // Show preview text for favorites and the Active section,
+                    // badge-only for plain alphabetical rows.
+                    if (app.isFavorite || item.forceNotificationPreview) {
                         holder.notificationPreview.visibility = View.VISIBLE
                         holder.notificationPreview.text = preview
                         holder.notificationPreview.setTextColor(secondaryTextColor)

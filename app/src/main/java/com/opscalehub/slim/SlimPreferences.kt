@@ -94,7 +94,7 @@ class SlimPreferences(context: Context) {
     // ---- Background ----
     /** Background mode: [BG_TRANSPARENT], [BG_DIMMED], or [BG_SOLID_BLACK]. */
     var backgroundMode: String
-        get() = prefs.getString(KEY_BACKGROUND_MODE, BG_DIMMED) ?: BG_DIMMED
+        get() = prefs.getString(KEY_BACKGROUND_MODE, BG_SOLID_BLACK) ?: BG_SOLID_BLACK
         set(value) = prefs.edit().putString(KEY_BACKGROUND_MODE, value).apply()
 
     /** Immersive mode: hide system status bar, show notification count + battery in header. */

@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Slim</string>
     <string name="title_favorites">Favorites</string>
+    <string name="title_active">Active</string>
     <string name="title_all_apps">All Apps</string>
     <string name="title_recent_searches">Recent</string>
     <string name="hint_search">Search apps…</string>
