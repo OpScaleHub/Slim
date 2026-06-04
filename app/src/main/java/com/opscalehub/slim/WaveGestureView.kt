@@ -5,7 +5,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.Typeface
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -35,15 +38,28 @@ class WaveGestureView @JvmOverloads constructor(
     private var isDragging = false
     private var touchY = 0f
 
+    // Auto-hide: the index fades out after a spell of no interaction and fades
+    // back the instant the user reaches for it. Alpha (not visibility) is used
+    // so the column stays touchable while invisible — a swipe along the edge
+    // both reveals it and starts scrubbing.
+    private val idleHandler = Handler(Looper.getMainLooper())
+    private val hideRunnable = Runnable {
+        animate().alpha(HIDDEN_ALPHA).setDuration(FADE_OUT_MS).start()
+    }
+
     // Adaptive palette (updated from MainActivity to stay readable on any wallpaper)
     private var activeColor = Color.parseColor("#f8fafc") // text_primary
     private var inactiveColor = Color.parseColor("#64748b") // text_muted
+
+    // Medium weight keeps the index legible at a glance even when inactive.
+    private val mediumTypeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
 
     // Pre-allocated styling paints
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = inactiveColor
         textAlign = Paint.Align.CENTER
         style = Paint.Style.FILL
+        typeface = mediumTypeface
         setShadowLayer(3f, 0f, 1f, Color.parseColor("#60000000"))
     }
 
@@ -67,6 +83,33 @@ class WaveGestureView @JvmOverloads constructor(
         alphabet = letters
         activeIndex = -1
         invalidate()
+        // Briefly show the refreshed index, then let it fade again.
+        reveal()
+        scheduleHide()
+    }
+
+    /** Fades the index back in and cancels any pending auto-hide. */
+    private fun reveal() {
+        idleHandler.removeCallbacks(hideRunnable)
+        if (alpha < 1f) {
+            animate().alpha(1f).setDuration(FADE_IN_MS).start()
+        }
+    }
+
+    /** Arms the auto-hide timer, restarting it if already pending. */
+    private fun scheduleHide() {
+        idleHandler.removeCallbacks(hideRunnable)
+        idleHandler.postDelayed(hideRunnable, IDLE_TIMEOUT_MS)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        scheduleHide()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        idleHandler.removeCallbacks(hideRunnable)
     }
 
     /** Updates colors so the index stays readable on light or dark wallpapers. */
@@ -117,7 +160,7 @@ class WaveGestureView @JvmOverloads constructor(
                 textPaint.isFakeBoldText = false
             }
 
-            val currentTextSize = 13f * resources.displayMetrics.density * scale
+            val currentTextSize = 15f * resources.displayMetrics.density * scale
             textPaint.textSize = currentTextSize
 
             // Center text vertically
@@ -135,6 +178,7 @@ class WaveGestureView @JvmOverloads constructor(
 
         when (event.action) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                reveal()
                 isDragging = true
                 val index = (touchY / itemHeight).toInt().coerceIn(0, alphabet.size - 1)
 
@@ -150,9 +194,19 @@ class WaveGestureView @JvmOverloads constructor(
                 activeIndex = -1
                 listener?.onLetterReleased()
                 invalidate()
+                scheduleHide()
             }
         }
         return true
+    }
+
+    companion object {
+        // Fade the index out after this long with no interaction.
+        private const val IDLE_TIMEOUT_MS = 4000L
+        private const val FADE_OUT_MS = 500L
+        private const val FADE_IN_MS = 180L
+        // Fully hidden when idle; bump to e.g. 0.15f if you'd rather keep a faint hint.
+        private const val HIDDEN_ALPHA = 0f
     }
 
     private fun triggerTick() {
