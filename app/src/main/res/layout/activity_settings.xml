@@ -206,6 +206,16 @@
             style="@style/SettingsSwitch"
             android:text="@string/settings_swipe_down_notifications" />
 
+        <!-- ======== NOTIFICATIONS ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_notifications" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchCommNotificationsOnly"
+            style="@style/SettingsSwitch"
+            android:text="@string/settings_comm_notifications_only" />
+
         <!-- ======== BACKUP & RESTORE ======== -->
         <TextView
             style="@style/SettingsSectionHeader"

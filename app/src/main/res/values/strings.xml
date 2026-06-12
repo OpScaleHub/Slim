@@ -48,6 +48,10 @@
     <string name="settings_swipe_up_search">Swipe up to open search</string>
     <string name="settings_swipe_down_notifications">Swipe down to open notifications</string>
 
+    <!-- Notifications -->
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_comm_notifications_only">Communication apps only</string>
+
     <!-- Appearance -->
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_show_app_icons">Show app icons</string>

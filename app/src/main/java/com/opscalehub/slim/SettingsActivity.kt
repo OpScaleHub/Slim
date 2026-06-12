@@ -58,6 +58,7 @@ class SettingsActivity : AppCompatActivity() {
         bindWeatherSection()
         bindSearchSection()
         bindGesturesSection()
+        bindNotificationsSection()
         bindBackupSection()
         bindSystemSection()
         bindAboutSection()
@@ -287,6 +288,14 @@ class SettingsActivity : AppCompatActivity() {
         switchSwipeDown.isChecked = prefs.swipeDownForNotifications
         switchSwipeDown.setOnCheckedChangeListener { _, checked ->
             prefs.swipeDownForNotifications = checked
+        }
+    }
+
+    private fun bindNotificationsSection() {
+        val switchCommOnly = findViewById<SwitchMaterial>(R.id.switchCommNotificationsOnly)
+        switchCommOnly.isChecked = prefs.communicationNotificationsOnly
+        switchCommOnly.setOnCheckedChangeListener { _, checked ->
+            prefs.communicationNotificationsOnly = checked
         }
     }
 
