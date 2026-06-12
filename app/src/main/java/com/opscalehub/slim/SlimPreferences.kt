@@ -112,6 +112,17 @@ class SlimPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_SWIPE_DOWN_NOTIFICATIONS, true)
         set(value) = prefs.edit().putBoolean(KEY_SWIPE_DOWN_NOTIFICATIONS, value).apply()
 
+    // ---- Notifications ----
+    /**
+     * When true (default), only communication notifications (message/call/email/
+     * social) surface on the home screen; everything else is filtered out as
+     * noise. Ongoing / foreground-service notifications are always dropped, and
+     * media gets its own row, regardless of this toggle.
+     */
+    var communicationNotificationsOnly: Boolean
+        get() = prefs.getBoolean(KEY_COMM_NOTIFICATIONS_ONLY, true)
+        set(value) = prefs.edit().putBoolean(KEY_COMM_NOTIFICATIONS_ONLY, value).apply()
+
     // ---- Backup / Restore ----
 
     /** Serializes every user preference to JSON (for settings backup). */
@@ -161,6 +172,7 @@ class SlimPreferences(context: Context) {
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val KEY_SWIPE_UP_SEARCH = "swipe_up_search"
         private const val KEY_SWIPE_DOWN_NOTIFICATIONS = "swipe_down_notifications"
+        private const val KEY_COMM_NOTIFICATIONS_ONLY = "comm_notifications_only"
         const val BG_TRANSPARENT = "transparent"
         const val BG_DIMMED = "dimmed"
         const val BG_SOLID_BLACK = "solid_black"

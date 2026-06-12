@@ -179,10 +179,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         waveGestureView.listener = this
         NotificationRegistry.registerListener(this)
 
-        // Tapping the weather area opens Slim Settings (weather section)
-        txtWeather.setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
-        }
+        // The weather chip is purely informational — tapping it does nothing.
+        // (It used to jump into Settings, which was an easy mis-tap.)
 
         // Tapping the header notification bell opens the system shade
         txtNotificationSummary.setOnClickListener {
@@ -844,8 +842,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             .distinct()
         // The settings gear used to live here, but sitting right after the last
         // letter it was easy to mis-tap on scrub-release. Settings is still
-        // reachable via the row at the end of the all-apps list, the Slim entry,
-        // and the weather chip — so the index stays letters-only.
+        // reachable via the row at the end of the all-apps list and the Slim
+        // entry — so the index stays letters-only.
         waveGestureView.setLetters(letters)
     }
 
@@ -1151,22 +1149,47 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                     holder.appIcon.setImageDrawable(icon)
                 }
 
+                val media = NotificationRegistry.getMedia(app.packageName)
                 val preview = NotificationRegistry.getNotificationPreview(app.packageName)
-                if (preview != null) {
-                    // Show preview text for favorites and the Active section,
-                    // badge-only for plain alphabetical rows.
-                    if (app.isFavorite || item.forceNotificationPreview) {
-                        holder.notificationPreview.visibility = View.VISIBLE
-                        holder.notificationPreview.text = preview
-                        holder.notificationPreview.setTextColor(secondaryTextColor)
-                    } else {
-                        holder.notificationPreview.visibility = View.GONE
+                when {
+                    media != null -> {
+                        // Now-playing row: album art (when available) replaces the
+                        // app icon, with "Title — Artist" and a ♪ badge. The icon
+                        // block above already set the real app icon, so recycled
+                        // rows never keep stale art.
+                        if (showIcons && media.art != null) {
+                            holder.appIcon.visibility = View.VISIBLE
+                            holder.appIcon.setImageBitmap(media.art)
+                        }
+                        if (app.isFavorite || item.forceNotificationPreview) {
+                            holder.notificationPreview.visibility = View.VISIBLE
+                            holder.notificationPreview.text =
+                                if (!media.artist.isNullOrEmpty()) "♪ ${media.title} — ${media.artist}"
+                                else "♪ ${media.title}"
+                            holder.notificationPreview.setTextColor(secondaryTextColor)
+                        } else {
+                            holder.notificationPreview.visibility = View.GONE
+                        }
+                        holder.notificationCount.visibility = View.VISIBLE
+                        holder.notificationCount.text = "♪"
                     }
-                    holder.notificationCount.visibility = View.VISIBLE
-                    holder.notificationCount.text = "!"
-                } else {
-                    holder.notificationPreview.visibility = View.GONE
-                    holder.notificationCount.visibility = View.GONE
+                    preview != null -> {
+                        // Show preview text for favorites and the Active section,
+                        // badge-only for plain alphabetical rows.
+                        if (app.isFavorite || item.forceNotificationPreview) {
+                            holder.notificationPreview.visibility = View.VISIBLE
+                            holder.notificationPreview.text = preview
+                            holder.notificationPreview.setTextColor(secondaryTextColor)
+                        } else {
+                            holder.notificationPreview.visibility = View.GONE
+                        }
+                        holder.notificationCount.visibility = View.VISIBLE
+                        holder.notificationCount.text = "!"
+                    }
+                    else -> {
+                        holder.notificationPreview.visibility = View.GONE
+                        holder.notificationCount.visibility = View.GONE
+                    }
                 }
 
                 holder.itemView.setOnClickListener {
