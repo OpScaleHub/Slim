@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
+import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -127,7 +128,7 @@ class WidgetHostManager(
     private fun naturalHeightDp(info: AppWidgetProviderInfo): Int {
         val metrics = context.resources.displayMetrics
         var dp = (info.minHeight / metrics.density).toInt()
-        if (info.targetCellHeight > 0) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && info.targetCellHeight > 0) {
             // Each home-screen cell is roughly CELL_DP tall including spacing.
             dp = maxOf(dp, info.targetCellHeight * CELL_DP)
         }
