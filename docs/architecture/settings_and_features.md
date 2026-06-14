@@ -21,9 +21,9 @@ Slim deliberately has **no persistent settings button** on the home screen. Inst
 
 - Tapping **Slim** in the alphabetical list or search results opens `SettingsActivity`.
 - Long-pressing the Slim entry does the same.
-- Tapping the weather text in the header also opens Settings (to configure weather quickly).
+- A Settings shortcut row also sits at the very end of the all-apps list (reached by scrubbing the alphabet).
 
-This keeps the home screen at zero visual overhead while keeping settings one obvious tap away.
+The header weather chip is purely informational — it intentionally does **nothing** on tap (it used to open Settings, but that sat right under the clock and was an easy mis-tap). This keeps the home screen at zero visual overhead while keeping settings one obvious tap away.
 
 ## 🗄️ Preference Storage (`SlimPreferences.kt`)
 
@@ -40,7 +40,13 @@ All options are stored in `SharedPreferences` (`slim_launcher_prefs`) behind a t
 | `weather_cache` / `weather_cache_time` | String/Long | — | Last fetched weather (30-minute TTL) |
 | `search_history_enabled` | Boolean | `true` | Remember recently searched apps |
 | `search_history` | String | — | Pipe-separated package names, most recent first (max 8) |
+| `show_app_icons` | Boolean | `true` | Show icons vs. text-only minimal list |
+| `background_mode` | String | `solid_black` | `transparent` / `dimmed` / `solid_black` window background |
+| `immersive_mode` | Boolean | `false` | Hide status bar; show notification count + battery in header |
 | `swipe_up_search` | Boolean | `true` | Enable/disable the swipe-up search gesture |
+| `swipe_down_notifications` | Boolean | `true` | Swipe down to open the system notification shade |
+| `comm_notifications_only` | Boolean | `true` | Surface only communication notifications on home |
+| `widget_id` | Int | `-1` | Bound home-screen widget id (`-1` = none) |
 
 ## 🌦️ Weather Modes
 
@@ -102,7 +108,11 @@ The launcher draws directly on the system wallpaper, so readability is handled a
 | Horizontal swipe | Alphabet browsing | Return to favorites |
 | Back press | Search open | Close search |
 | Back press | Alphabet browsing | Return to favorites |
+| Back press | Home (favorites) state | **Nothing** — the home screen is the bottom of the nav stack and never finishes |
 | Long-press app | Any list | Options: favorite, rename, hide |
+
+> [!NOTE] Back never exits the launcher
+> Back is handled through an always-enabled `OnBackPressedCallback` (not the legacy `onBackPressed`), so it behaves correctly under predictive-back gestures too. At the home state it is *consumed* — the home Activity is never finished. Letting it finish is what caused some OEM ROMs (notably OnePlus/ColorOS) to intermittently fall back to the stock launcher on repeated Back.
 
 ## 👔 Work Profile Support
 
@@ -124,3 +134,19 @@ Import applies preferences immediately and re-applies app customizations by id. 
 ## 📥 Notification Shade Gesture
 
 Swipe down on the home screen calls `StatusBarManager.expandNotificationsPanel()` via reflection (the same approach used by Lawnchair and other FOSS launchers). On devices/ROMs where the hidden API is blocked, the gesture silently no-ops. Toggleable in *Settings → Gestures*.
+
+## 🧩 Home-Screen Widget
+
+Slim can host **one** standard Android app widget in a slot above the app list (`WidgetHostManager.kt`).
+
+### Binding (no special permission)
+Adding a widget is driven from *Settings → Widget → Add a widget*, which fires the system widget picker (`AppWidgetManager.ACTION_APPWIDGET_PICK`). The picker performs the bind on the user's behalf with system privileges, so Slim does **not** need the signature-level `BIND_APPWIDGET` permission. If the chosen provider declares a configuration activity, it's launched via `AppWidgetHost.startAppWidgetConfigureActivityForResult` before the widget is saved. The bound id is persisted in `widget_id`.
+
+### Hosting & rendering
+`MainActivity` owns an `AppWidgetHost` (stable `HOST_ID`), started/stopped with the Activity lifecycle and re-rendered on resume. The persistent identity is the `(package, HOST_ID)` pair, so a widget bound by the Settings host renders through the MainActivity host. Rendering self-heals: if the provider goes missing (app uninstalled), the stale id is cleared and the slot hidden.
+
+### Predictable look across widget shapes
+- The slot height adapts to the widget's declared size (`minHeight`, preferring the API 31+ `targetCellHeight`), clamped to a band (min 64dp → max 45% of screen height) so a tiny widget isn't lost and a huge one can't dominate.
+- The widget fills the correctly-sized box (no vertical stretching/cropping), and `clipToOutline` over a rounded `widget_slot_bg` rounds every widget to one consistent silhouette — opaque widgets like Duolingo and transparent ones like a clock all share the same card.
+
+Removing the widget (*Settings → Widget → Remove widget*) deletes the host id and hides the slot.

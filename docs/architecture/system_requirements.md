@@ -24,7 +24,7 @@ graph TD
     Launcher[Slim Launcher] -->|Default Home App| Home[android.intent.category.HOME]
     Launcher -->|Query Apps| Query[manifest queries declaration]
     Launcher -->|Read Notifications| NListener[android.permission.BIND_NOTIFICATION_LISTENER_SERVICE]
-    Launcher -->|Bind Widgets| Widget[android.permission.BIND_APPWIDGET]
+    Launcher -->|Host Widgets| Widget[AppWidgetHost + system picker · no permission]
     Launcher -->|Haptics| Vibe[android.permission.VIBRATE]
     Launcher -->|Opt-in Weather Only| Net[android.permission.INTERNET]
 ```
@@ -53,9 +53,9 @@ In `AndroidManifest.xml`, the main Activity must register as a system home launc
 - **Purpose**: Crucial for displaying inline notifications under favorites and performing swipe actions/quick replies directly from the home screen list.
 
 ### 4. Widget Hosting
-- **Service**: `android.appwidget.AppWidgetHost`
-- **Permission**: `android.permission.BIND_APPWIDGET`
-- **Purpose**: Enables the launcher to host, display, and resize standard Android app widgets.
+- **API**: `android.appwidget.AppWidgetHost` + `AppWidgetManager`
+- **Permission**: **None.** Binding goes through the system widget picker (`ACTION_APPWIDGET_PICK`), which binds the chosen widget on the user's behalf with system privileges. This avoids the signature-level `BIND_APPWIDGET` permission, which only the system/default-configured launcher can hold — so Slim stays installable as an ordinary app.
+- **Purpose**: Lets the launcher host and render one standard Android app widget. Implemented in `WidgetHostManager.kt`; see [[settings_and_features#🧩 Home-Screen Widget|Settings & Features → Home-Screen Widget]].
 
 ---
 
@@ -68,6 +68,7 @@ Slim Launcher is designed with a strict MVVM (Model-View-ViewModel) pattern usin
 |                      UI LAYER                          |
 |  MainActivity -> RecyclerScroll & WaveGestureView      |
 |              -> Floating Search Panel                  |
+|              -> WidgetHostManager (AppWidgetHost)      |
 |  SettingsActivity -> Feature toggles, About/Contact    |
 +--------------------------------------------------------+
                            ^
