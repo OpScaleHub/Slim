@@ -102,6 +102,16 @@ class SlimPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_IMMERSIVE_MODE, false)
         set(value) = prefs.edit().putBoolean(KEY_IMMERSIVE_MODE, value).apply()
 
+    // ---- Widget ----
+    /**
+     * The single app-widget id currently bound to Slim's home screen, or
+     * [NO_WIDGET] when none is set. Allocated by [WidgetHostManager]'s host and
+     * persisted here so the widget survives restarts and is re-rendered on launch.
+     */
+    var widgetId: Int
+        get() = prefs.getInt(KEY_WIDGET_ID, NO_WIDGET)
+        set(value) = prefs.edit().putInt(KEY_WIDGET_ID, value).apply()
+
     // ---- Gestures ----
     var swipeUpForSearch: Boolean
         get() = prefs.getBoolean(KEY_SWIPE_UP_SEARCH, true)
@@ -158,6 +168,9 @@ class SlimPreferences(context: Context) {
         const val WEATHER_SIMULATED = "simulated"
         const val WEATHER_REAL = "real"
 
+        /** Sentinel for [widgetId] when no widget is bound. Matches AppWidgetManager.INVALID_APPWIDGET_ID. */
+        const val NO_WIDGET = -1
+
         private const val KEY_SHOW_CLOCK = "show_clock"
         private const val KEY_SHOW_DATE = "show_date"
         private const val KEY_24_HOUR = "use_24_hour"
@@ -180,5 +193,6 @@ class SlimPreferences(context: Context) {
         private const val KEY_SHOW_APP_ICONS = "show_app_icons"
         private const val KEY_BACKGROUND_MODE = "background_mode"
         private const val KEY_IMMERSIVE_MODE = "immersive_mode"
+        private const val KEY_WIDGET_ID = "widget_id"
     }
 }

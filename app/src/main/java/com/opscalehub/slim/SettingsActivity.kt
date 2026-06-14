@@ -1,9 +1,12 @@
 package com.opscalehub.slim
 
 import android.app.AlertDialog
+import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Parcelable
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
@@ -31,6 +34,52 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var repository: AppRepository
     private val weatherService = WeatherService()
 
+    // ---- Widget hosting ----
+    // Shares WidgetHostManager.HOST_ID with MainActivity so a widget bound here
+    // renders through the launcher's host. This host only allocates/binds ids;
+    // MainActivity does the actual rendering.
+    private val widgetManager by lazy { AppWidgetManager.getInstance(this) }
+    private val widgetHost by lazy { AppWidgetHost(this, WidgetHostManager.HOST_ID) }
+    // Widget id awaiting its configuration activity result (configure step).
+    private var pendingWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
+    // Refreshes the Widget section rows after a successful add/remove.
+    private var refreshWidgetRow: (() -> Unit)? = null
+
+    /**
+     * System widget picker. ACTION_APPWIDGET_PICK binds the chosen provider to
+     * our host on the user's behalf with system privileges — this is how a
+     * non-system launcher hosts widgets without the signature-only
+     * BIND_APPWIDGET permission. On return, run the provider's configuration
+     * activity if it declares one, then persist the id.
+     */
+    private val widgetPickLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val id = result.data?.getIntExtra(
+                AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID
+            ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
+            if (result.resultCode == RESULT_OK && id != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                val info = widgetManager.getAppWidgetInfo(id)
+                if (info?.configure != null) {
+                    pendingWidgetId = id
+                    try {
+                        // Host-driven launch handles non-exported configure activities.
+                        widgetHost.startAppWidgetConfigureActivityForResult(
+                            this, id, 0, REQ_CONFIGURE_WIDGET, null
+                        )
+                    } catch (e: Exception) {
+                        // Configure activity refused to launch — keep the bound
+                        // widget anyway; most render fine with defaults.
+                        finishWidgetSetup(id)
+                    }
+                } else {
+                    finishWidgetSetup(id)
+                }
+            } else if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                // User backed out of the picker — release the reserved id.
+                widgetHost.deleteAppWidgetId(id)
+            }
+        }
+
     // Default-launcher (RoleManager HOME) request — must run for-result so the
     // system sees our calling package, otherwise the dialog bails immediately.
     private val defaultHomeLauncher =
@@ -55,6 +104,7 @@ class SettingsActivity : AppCompatActivity() {
 
         bindHomeSection()
         bindAppearanceSection()
+        bindWidgetSection()
         bindWeatherSection()
         bindSearchSection()
         bindGesturesSection()
@@ -112,6 +162,85 @@ class SettingsActivity : AppCompatActivity() {
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
+    }
+
+    // ---- Widget section ----
+
+    private fun bindWidgetSection() {
+        val btnWidget = findViewById<TextView>(R.id.btnWidget)
+        val btnRemove = findViewById<TextView>(R.id.btnRemoveWidget)
+
+        fun refresh() {
+            val hasWidget = prefs.widgetId != SlimPreferences.NO_WIDGET &&
+                widgetManager.getAppWidgetInfo(prefs.widgetId) != null
+            btnWidget.text = getString(
+                if (hasWidget) R.string.settings_change_widget else R.string.settings_add_widget
+            )
+            btnRemove.visibility = if (hasWidget) View.VISIBLE else View.GONE
+        }
+        refreshWidgetRow = ::refresh
+        refresh()
+
+        btnWidget.setOnClickListener { pickWidget() }
+        btnRemove.setOnClickListener { removeWidget() }
+    }
+
+    /** Opens the system widget picker, reserving a fresh host id for the choice. */
+    private fun pickWidget() {
+        val id = widgetHost.allocateAppWidgetId()
+        val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_PICK).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+            // Empty custom lists keep some OEM pickers from crashing.
+            putParcelableArrayListExtra(AppWidgetManager.EXTRA_CUSTOM_INFO, ArrayList<Parcelable>())
+            putParcelableArrayListExtra(AppWidgetManager.EXTRA_CUSTOM_EXTRAS, ArrayList<Parcelable>())
+        }
+        try {
+            widgetPickLauncher.launch(intent)
+        } catch (e: Exception) {
+            widgetHost.deleteAppWidgetId(id)
+            Toast.makeText(this, R.string.settings_widget_pick_failed, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /**
+     * Replaces any existing widget with [id] and persists it so MainActivity
+     * renders it. Only one widget slot exists, so the previous one is released.
+     */
+    private fun finishWidgetSetup(id: Int) {
+        val previous = prefs.widgetId
+        if (previous != SlimPreferences.NO_WIDGET && previous != id) {
+            widgetHost.deleteAppWidgetId(previous)
+        }
+        prefs.widgetId = id
+        refreshWidgetRow?.invoke()
+        Toast.makeText(this, R.string.settings_widget_added, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun removeWidget() {
+        val id = prefs.widgetId
+        if (id != SlimPreferences.NO_WIDGET) {
+            widgetHost.deleteAppWidgetId(id)
+        }
+        prefs.widgetId = SlimPreferences.NO_WIDGET
+        refreshWidgetRow?.invoke()
+        Toast.makeText(this, R.string.settings_widget_removed, Toast.LENGTH_SHORT).show()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_CONFIGURE_WIDGET) return
+        val id = data?.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID, pendingWidgetId
+        ) ?: pendingWidgetId
+        if (resultCode == RESULT_OK && id != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            finishWidgetSetup(id)
+        } else if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            // User cancelled configuration — release the reserved id.
+            widgetHost.deleteAppWidgetId(id)
+        }
+        pendingWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     }
 
     private fun bindBackupSection() {
@@ -345,5 +474,11 @@ class SettingsActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, url, Toast.LENGTH_LONG).show()
         }
+    }
+
+    companion object {
+        // Request code for the widget provider's configuration activity, launched
+        // via AppWidgetHost.startAppWidgetConfigureActivityForResult.
+        private const val REQ_CONFIGURE_WIDGET = 1011
     }
 }

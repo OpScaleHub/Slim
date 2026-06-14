@@ -105,13 +105,18 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- App Widget Frame -->
+    <!-- App Widget Frame: hosts a single optional third-party widget.
+         Hidden until one is added via Slim Settings > Widget. Height is set at
+         runtime to the widget's natural size (WidgetHostManager) so widgets of
+         any shape render without stretching; the rounded background + outline
+         clip give every widget one consistent silhouette. -->
     <FrameLayout
         android:id="@+id/widgetContainer"
         android:layout_width="0dp"
-        android:layout_height="120dp"
+        android:layout_height="wrap_content"
         android:layout_marginHorizontal="20dp"
-        android:background="@color/card_bg"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/widget_slot_bg"
         android:visibility="gone"
         app:layout_constraintEnd_toStartOf="@+id/waveGestureView"
         app:layout_constraintStart_toStartOf="parent"

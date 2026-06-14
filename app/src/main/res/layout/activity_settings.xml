@@ -176,6 +176,29 @@
             style="@style/SettingsActionRow"
             android:text="@string/settings_hidden_apps" />
 
+        <!-- ======== WIDGET ======== -->
+        <TextView
+            style="@style/SettingsSectionHeader"
+            android:text="@string/settings_section_widget" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_widget_summary"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btnWidget"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_add_widget" />
+
+        <TextView
+            android:id="@+id/btnRemoveWidget"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_remove_widget"
+            android:visibility="gone" />
+
         <!-- ======== SEARCH ======== -->
         <TextView
             style="@style/SettingsSectionHeader"

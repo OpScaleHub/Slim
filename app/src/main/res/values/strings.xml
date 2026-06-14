@@ -64,6 +64,16 @@
     <string name="settings_immersive_mode">Immersive full-screen</string>
     <string name="settings_immersive_mode_summary">Hide status bar — clock, notifications, and battery shown in launcher header instead</string>
 
+    <!-- Widget -->
+    <string name="settings_section_widget">Widget</string>
+    <string name="settings_widget_summary">Place one app widget above your app list (e.g. Duolingo streak, calendar, clock)</string>
+    <string name="settings_add_widget">Add a widget</string>
+    <string name="settings_change_widget">Change widget</string>
+    <string name="settings_remove_widget">Remove widget</string>
+    <string name="settings_widget_added">Widget added — open your home screen to see it</string>
+    <string name="settings_widget_removed">Widget removed</string>
+    <string name="settings_widget_pick_failed">No widget picker available on this device</string>
+
     <!-- Hidden apps -->
     <string name="settings_hidden_apps">Hidden apps</string>
     <string name="settings_no_hidden_apps">No hidden apps</string>

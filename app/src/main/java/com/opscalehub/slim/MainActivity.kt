@@ -29,6 +29,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.lifecycleScope
@@ -69,6 +70,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private lateinit var txtBattery: TextView
     private var packageChangeReceiver: BroadcastReceiver? = null
     private var batteryReceiver: BroadcastReceiver? = null
+    private lateinit var widgetHost: WidgetHostManager
 
     private lateinit var db: AppDatabase
     private lateinit var repository: AppRepository
@@ -153,6 +155,9 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         repository = AppRepository(this, db.appDao())
         prefs = SlimPreferences(this)
 
+        // Host for an optional single home-screen widget (added via Settings).
+        widgetHost = WidgetHostManager(this, findViewById(R.id.widgetContainer), prefs)
+
         // Set up home RecyclerView (Favorites + alphabetical browsing)
         adapter = AppListAdapter(this, emptyList()) { appItem, isLongClick ->
             if (isLongClick) {
@@ -236,6 +241,23 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                     }
                 }
                 return false
+            }
+        })
+
+        // Back handling — a launcher's home is the bottom of the navigation
+        // stack, so Back must NEVER finish it (finishing yields the screen to
+        // whatever other home activity the system falls back to, which is the
+        // "Slim sometimes drops to the stock launcher on back/back/back" bug).
+        // An always-enabled callback only closes our own overlays and otherwise
+        // consumes the event. Using OnBackPressedDispatcher also makes this
+        // correct under predictive-back gestures, not just the Back key.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when {
+                    searchPanel.visibility == View.VISIBLE -> hideSearchBar()
+                    isAlphabetScrubbing -> exitAlphabetMode()
+                    else -> { /* At home root: consume and stay. */ }
+                }
             }
         })
 
@@ -347,9 +369,21 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        widgetHost.startListening()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        widgetHost.stopListening()
+    }
+
     override fun onResume() {
         super.onResume()
         maybePromptDefaultLauncher()
+        // Re-render in case a widget was added/removed/changed in Settings.
+        widgetHost.render()
         applyHeaderPreferences()
         applyAdaptiveColors()
         applyBackgroundMode()
@@ -706,17 +740,6 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         searchAdapter.updateItems(items)
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (searchPanel.visibility == View.VISIBLE) {
-            hideSearchBar()
-        } else if (isAlphabetScrubbing) {
-            exitAlphabetMode()
-        } else {
-            @Suppress("DEPRECATION")
-            super.onBackPressed()
-        }
-    }
 
     override fun onDestroy() {
         super.onDestroy()
