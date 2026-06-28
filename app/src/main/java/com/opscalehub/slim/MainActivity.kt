@@ -354,10 +354,18 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
      */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && ::prefs.isInitialized && prefs.immersiveMode &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-        ) {
-            window.insetsController?.hide(android.view.WindowInsets.Type.statusBars())
+        if (hasFocus) {
+            if (::prefs.isInitialized && prefs.immersiveMode &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+            ) {
+                window.insetsController?.hide(android.view.WindowInsets.Type.statusBars())
+            }
+        } else {
+            // When any floating window takes focus (overlay, dialog, system prompt,
+            // etc.) it can swallow the ACTION_UP that would normally end a gesture.
+            // Cancel any in-flight scrub so WaveGestureView never gets stuck in
+            // isDragging=true waiting for a terminal touch event that won't come.
+            waveGestureView.cancelDrag()
         }
     }
 
@@ -901,6 +909,10 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     }
 
     override fun onLetterSelected(letter: String) {
+        // Ignore alphabet scrubbing while the search panel is open — the scrim
+        // should block these touches, but guard here too in case any overlay or
+        // focus change delivers events out of the expected order.
+        if (searchPanel.visibility == View.VISIBLE) return
         if (!isAlphabetScrubbing) {
             isAlphabetScrubbing = true
             updateAdapterData()

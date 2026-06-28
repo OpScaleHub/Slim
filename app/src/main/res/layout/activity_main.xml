@@ -136,12 +136,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/widgetContainer" />
 
-    <!-- Search scrim overlay -->
+    <!-- Search scrim overlay.
+         clickable=true is load-bearing: without it the View does not consume
+         touch events, so they fall through to views behind it (e.g. the
+         WaveGestureView) and trigger unintended interactions while search is open. -->
     <View
         android:id="@+id/searchScrim"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#DD000000"
+        android:clickable="true"
+        android:focusable="false"
         android:elevation="6dp"
         android:visibility="gone" />
 

@@ -112,6 +112,20 @@ class WaveGestureView @JvmOverloads constructor(
         idleHandler.removeCallbacks(hideRunnable)
     }
 
+    /**
+     * Cancels an active drag without waiting for ACTION_UP/CANCEL.
+     * Any floating window that takes focus (overlay, dialog, system prompt, etc.)
+     * can swallow the terminal touch event, leaving isDragging stuck as true.
+     * Call this whenever the host window loses focus so the state is always clean.
+     */
+    fun cancelDrag() {
+        if (!isDragging) return
+        isDragging = false
+        activeIndex = -1
+        invalidate()
+        scheduleHide()
+    }
+
     /** Updates colors so the index stays readable on light or dark wallpapers. */
     fun setPalette(active: Int, inactive: Int) {
         if (active == activeColor && inactive == inactiveColor) return
