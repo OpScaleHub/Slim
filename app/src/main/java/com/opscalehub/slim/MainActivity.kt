@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.BatteryManager
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
@@ -33,10 +34,13 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.roundToInt
@@ -70,6 +74,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private lateinit var txtBattery: TextView
     private var packageChangeReceiver: BroadcastReceiver? = null
     private var batteryReceiver: BroadcastReceiver? = null
+    private var batteryReceiverRegistered = false
     private lateinit var widgetHost: WidgetHostManager
 
     private lateinit var db: AppDatabase
@@ -125,6 +130,13 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         refreshRetryCount++
         lifecycleScope.launch { repository.refreshApps() }
     }
+    // Cached so the clock tick doesn't allocate two new SimpleDateFormat objects every second.
+    private val clockDateFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
+    private val clockTime24Format = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val clockTime12Format = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private var clockTicks = 0
+    // Debounce adapter rebuilds triggered by rapid notification events (e.g. music player).
+    private val pendingAdapterUpdate = Runnable { updateAdapterData() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -353,19 +365,24 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
      * If Slim isn't the default Home app (e.g. right after an install, which
      * wipes the assignment), show the one-tap RoleManager dialog to reclaim it.
      * Fires at most once per process so a declined prompt doesn't keep popping.
+     *
+     * All work runs on IO: PackageManager.resolveActivity(), RoleManager.isRoleAvailable(),
+     * and RoleManager.isRoleHeld() are Binder IPC calls that can stall for seconds on
+     * some devices. Calling them synchronously in onResume() was blocking the main
+     * thread long enough to trigger "Application does not have a focused window" ANRs.
      */
     private fun maybePromptDefaultLauncher() {
         if (defaultHomePrompted) return
-        if (DefaultLauncherHelper.isDefaultHome(this)) return
-        // Auto-prompt only where the one-tap dialog exists (Q+); on older
-        // versions silently dumping the user into Home settings would be jarring
-        // — the Settings button still covers them.
+        defaultHomePrompted = true  // set before the coroutine to prevent double-fire
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-        defaultHomePrompted = true
-        try {
-            defaultHomeLauncher.launch(DefaultLauncherHelper.requestIntent(this))
-        } catch (e: Exception) {
-            // Role unavailable on this device — Settings button remains the path
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                if (DefaultLauncherHelper.isDefaultHome(this@MainActivity)) return@launch
+                val intent = DefaultLauncherHelper.requestIntent(this@MainActivity)
+                withContext(Dispatchers.Main) {
+                    defaultHomeLauncher.launch(intent)
+                }
+            }
         }
     }
 
@@ -395,8 +412,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         // Pick up newly installed/removed apps — with retry for timing (F-Droid etc.)
         scheduleAppRefresh()
 
-        // Battery level receiver for real-time updates
-        if (prefs.immersiveMode) {
+        // Battery level receiver for real-time updates (register once, not on every resume)
+        if (prefs.immersiveMode && !batteryReceiverRegistered) {
             if (batteryReceiver == null) {
                 batteryReceiver = object : BroadcastReceiver() {
                     override fun onReceive(context: Context?, intent: Intent?) {
@@ -405,6 +422,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 }
             }
             registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            batteryReceiverRegistered = true
         }
     }
 
@@ -465,12 +483,11 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         clockTimer.scheduleAtFixedRate(object : TimerTask() {
             override fun run() {
                 runOnUiThread {
-                    val dateFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
-                    val timePattern = if (prefs.use24HourFormat) "HH:mm" else "h:mm a"
-                    val timeFormat = SimpleDateFormat(timePattern, Locale.getDefault())
-                    txtClock.text = timeFormat.format(Date())
-                    txtDate.text = dateFormat.format(Date())
-                    updateWeather()
+                    val now = Date()
+                    txtClock.text = (if (prefs.use24HourFormat) clockTime24Format else clockTime12Format).format(now)
+                    txtDate.text = clockDateFormat.format(now)
+                    // Weather has its own 60s cache; no need to check on every tick.
+                    if (++clockTicks % 60 == 0) updateWeather()
                 }
             }
         }, 0, 1000)
@@ -576,41 +593,46 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
     // ---- Adaptive colors (readable on any wallpaper) ----
 
+    /**
+     * WallpaperManager.getWallpaperColors() is a Binder IPC call that can stall
+     * the main thread for multiple seconds on some devices (observed on Oplus).
+     * Do the query on IO, then apply the resolved palette on the main thread.
+     */
     private fun applyAdaptiveColors() {
-        var useDarkText = false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            try {
-                val wallpaperColors = WallpaperManager.getInstance(this)
-                    .getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
-                if (wallpaperColors != null) {
-                    useDarkText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        (wallpaperColors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT) != 0
-                    } else {
-                        ColorUtils.calculateLuminance(wallpaperColors.primaryColor.toArgb()) > 0.5
-                    }
+        lifecycleScope.launch {
+            val useDarkText = withContext(Dispatchers.IO) {
+                var dark = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                    try {
+                        val wallpaperColors = WallpaperManager.getInstance(this@MainActivity)
+                            .getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
+                        if (wallpaperColors != null) {
+                            dark = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                (wallpaperColors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT) != 0
+                            } else {
+                                ColorUtils.calculateLuminance(wallpaperColors.primaryColor.toArgb()) > 0.5
+                            }
+                        }
+                    } catch (_: Exception) { }
                 }
-            } catch (e: Exception) {
-                // Keep the dark-wallpaper (light text) defaults
+                dark
             }
+            val primary = getColor(if (useDarkText) R.color.text_primary_on_light else R.color.text_primary)
+            val secondary = getColor(if (useDarkText) R.color.text_secondary_on_light else R.color.text_secondary)
+            val muted = getColor(if (useDarkText) R.color.text_muted_on_light else R.color.text_muted)
+            val accent = resolveAccentColor()
+
+            txtClock.setTextColor(primary)
+            txtDate.setTextColor(secondary)
+            txtWeather.setTextColor(accent)
+            waveGestureView.setPalette(primary, muted)
+            adapter.setTextColors(primary, secondary, accent)
+            searchAdapter.setTextColors(
+                getColor(R.color.text_primary),
+                getColor(R.color.text_secondary),
+                accent
+            )
         }
-
-        val primary = getColor(if (useDarkText) R.color.text_primary_on_light else R.color.text_primary)
-        val secondary = getColor(if (useDarkText) R.color.text_secondary_on_light else R.color.text_secondary)
-        val muted = getColor(if (useDarkText) R.color.text_muted_on_light else R.color.text_muted)
-        val accent = resolveAccentColor()
-
-        txtClock.setTextColor(primary)
-        txtDate.setTextColor(secondary)
-        txtWeather.setTextColor(accent)
-        waveGestureView.setPalette(primary, muted)
-        // Home list sits directly on the wallpaper → adaptive text.
-        adapter.setTextColors(primary, secondary, accent)
-        // Search results sit on the dark floating panel → always light text.
-        searchAdapter.setTextColors(
-            getColor(R.color.text_primary),
-            getColor(R.color.text_secondary),
-            accent
-        )
     }
 
     /** Material You dynamic accent on Android 12+, indigo fallback below. */
@@ -681,17 +703,20 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             searchPanel.scaleY = 0.9f
             searchPanel.alpha = 0f
             searchPanel.visibility = View.VISIBLE
+            showRecentApps()
+            searchEditText.requestFocus()
+            // Show keyboard only after the panel animation completes so the window
+            // is guaranteed to have focus — showSoftInput silently no-ops if it fires
+            // before the window holds input focus (was the "keyboard won't pop up" bug).
             searchPanel.animate()
                 .scaleX(1f).scaleY(1f).alpha(1f)
                 .setDuration(280)
                 .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
+                .withEndAction {
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT)
+                }
                 .start()
-            showRecentApps()
-            searchEditText.requestFocus()
-            handler.postDelayed({
-                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT)
-            }, 150)
         }
     }
 
@@ -735,7 +760,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         val items = mutableListOf<AdapterItem>()
         items.add(AdapterItem(ViewType.HEADER, headerText = getString(R.string.title_recent_searches)))
         for (app in historyApps) {
-            items.add(AdapterItem(ViewType.APP, appItem = app))
+            items.add(adapterItemForApp(app))
         }
         searchAdapter.updateItems(items)
     }
@@ -745,11 +770,13 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         super.onDestroy()
         clockTimer.cancel()
         handler.removeCallbacks(returnToFavoritesRunnable)
+        handler.removeCallbacks(pendingAdapterUpdate)
         handler.removeCallbacks(refreshRetry1)
         handler.removeCallbacks(refreshRetry2)
         NotificationRegistry.unregisterListener()
         packageChangeReceiver?.let { unregisterReceiver(it) }
         batteryReceiver?.let { try { unregisterReceiver(it) } catch (_: Exception) {} }
+        batteryReceiverRegistered = false
     }
 
     /**
@@ -849,8 +876,11 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     }
 
     override fun onNotificationsChanged() {
-        runOnUiThread {
-            updateAdapterData()
+        // Debounce: music players can fire rapid-fire notification updates; coalesce
+        // into a single adapter rebuild per 100ms to avoid cascading frame drops.
+        handler.post {
+            handler.removeCallbacks(pendingAdapterUpdate)
+            handler.postDelayed(pendingAdapterUpdate, 100)
             if (prefs.immersiveMode) updateNotificationSummary()
         }
     }
@@ -923,9 +953,24 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             .sortedWith(compareBy({ it.first }, { it.second.displayLabel.lowercase(Locale.getDefault()) }))
             .map { it.second }
 
-        val items = ranked.map { AdapterItem(ViewType.APP, appItem = it) }
+        val items = ranked.map { adapterItemForApp(it) }
         searchAdapter.updateItems(items)
         txtNoResults.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    // Snapshot notification/media state from the registry into an AdapterItem so
+    // DiffUtil can detect per-row content changes without hitting the registry in bind.
+    private fun adapterItemForApp(app: AppItem, forceNotif: Boolean = false): AdapterItem {
+        val media = NotificationRegistry.getMedia(app.packageName)
+        return AdapterItem(
+            type = ViewType.APP,
+            appItem = app,
+            forceNotificationPreview = forceNotif,
+            mediaTitle = media?.title,
+            mediaArtist = media?.artist,
+            mediaArt = media?.art,
+            notifPreview = if (media == null) NotificationRegistry.getNotificationPreview(app.packageName) else null,
+        )
     }
 
     // Merge Favorites and All Apps into custom RecyclerView elements
@@ -941,7 +986,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         if (favList.isNotEmpty()) {
             items.add(AdapterItem(ViewType.HEADER, headerText = getString(R.string.title_favorites)))
             for (fav in favList) {
-                items.add(AdapterItem(ViewType.APP, appItem = fav))
+                items.add(adapterItemForApp(fav))
             }
         }
 
@@ -959,7 +1004,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             if (activeApps.isNotEmpty()) {
                 items.add(AdapterItem(ViewType.HEADER, headerText = getString(R.string.title_active)))
                 for (app in activeApps) {
-                    items.add(AdapterItem(ViewType.APP, appItem = app, forceNotificationPreview = true))
+                    items.add(adapterItemForApp(app, forceNotif = true))
                 }
             }
         }
@@ -974,7 +1019,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                     currentHeader = firstChar
                     items.add(AdapterItem(ViewType.HEADER, headerText = currentHeader))
                 }
-                items.add(AdapterItem(ViewType.APP, appItem = app))
+                items.add(adapterItemForApp(app))
             }
             // Settings shortcut at the very end of the alphabetical list
             items.add(AdapterItem(ViewType.SETTINGS, headerText = SETTINGS_LETTER))
@@ -1069,7 +1114,13 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         val appItem: AppItem? = null,
         // Force the notification preview line visible even for non-favorites
         // (used by the home "Active" section).
-        val forceNotificationPreview: Boolean = false
+        val forceNotificationPreview: Boolean = false,
+        // Notification/media state snapshotted at list-build time so DiffUtil can
+        // detect per-row content changes without re-querying the registry in bind.
+        val notifPreview: String? = null,
+        val mediaTitle: String? = null,
+        val mediaArtist: String? = null,
+        val mediaArt: Bitmap? = null,
     )
 
     class AppListAdapter(
@@ -1092,8 +1143,9 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         private var showIcons = true
 
         fun updateItems(newItems: List<AdapterItem>) {
+            val diff = DiffUtil.calculateDiff(AdapterDiffCallback(items, newItems))
             items = newItems
-            notifyDataSetChanged()
+            diff.dispatchUpdatesTo(this)
         }
 
         fun setTextColors(primary: Int, secondary: Int, accent: Int) {
@@ -1172,23 +1224,19 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                     holder.appIcon.setImageDrawable(icon)
                 }
 
-                val media = NotificationRegistry.getMedia(app.packageName)
-                val preview = NotificationRegistry.getNotificationPreview(app.packageName)
                 when {
-                    media != null -> {
+                    item.mediaTitle != null -> {
                         // Now-playing row: album art (when available) replaces the
-                        // app icon, with "Title — Artist" and a ♪ badge. The icon
-                        // block above already set the real app icon, so recycled
-                        // rows never keep stale art.
-                        if (showIcons && media.art != null) {
+                        // app icon, with "Title — Artist" and a ♪ badge.
+                        if (showIcons && item.mediaArt != null) {
                             holder.appIcon.visibility = View.VISIBLE
-                            holder.appIcon.setImageBitmap(media.art)
+                            holder.appIcon.setImageBitmap(item.mediaArt)
                         }
                         if (app.isFavorite || item.forceNotificationPreview) {
                             holder.notificationPreview.visibility = View.VISIBLE
                             holder.notificationPreview.text =
-                                if (!media.artist.isNullOrEmpty()) "♪ ${media.title} — ${media.artist}"
-                                else "♪ ${media.title}"
+                                if (!item.mediaArtist.isNullOrEmpty()) "♪ ${item.mediaTitle} — ${item.mediaArtist}"
+                                else "♪ ${item.mediaTitle}"
                             holder.notificationPreview.setTextColor(secondaryTextColor)
                         } else {
                             holder.notificationPreview.visibility = View.GONE
@@ -1196,12 +1244,12 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                         holder.notificationCount.visibility = View.VISIBLE
                         holder.notificationCount.text = "♪"
                     }
-                    preview != null -> {
+                    item.notifPreview != null -> {
                         // Show preview text for favorites and the Active section,
                         // badge-only for plain alphabetical rows.
                         if (app.isFavorite || item.forceNotificationPreview) {
                             holder.notificationPreview.visibility = View.VISIBLE
-                            holder.notificationPreview.text = preview
+                            holder.notificationPreview.text = item.notifPreview
                             holder.notificationPreview.setTextColor(secondaryTextColor)
                         } else {
                             holder.notificationPreview.visibility = View.GONE
@@ -1255,6 +1303,25 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             val workBadge: TextView = view.findViewById(R.id.txtWorkBadge)
             val notificationPreview: TextView = view.findViewById(R.id.txtNotificationPreview)
             val notificationCount: TextView = view.findViewById(R.id.txtNotificationCount)
+        }
+
+        private class AdapterDiffCallback(
+            private val oldList: List<AdapterItem>,
+            private val newList: List<AdapterItem>
+        ) : DiffUtil.Callback() {
+            override fun getOldListSize() = oldList.size
+            override fun getNewListSize() = newList.size
+            override fun areItemsTheSame(oldPos: Int, newPos: Int): Boolean {
+                val o = oldList[oldPos]; val n = newList[newPos]
+                if (o.type != n.type) return false
+                return when (o.type) {
+                    ViewType.APP -> o.appItem?.id == n.appItem?.id
+                    ViewType.HEADER -> o.headerText == n.headerText
+                    ViewType.SETTINGS -> true
+                }
+            }
+            override fun areContentsTheSame(oldPos: Int, newPos: Int) =
+                oldList[oldPos] == newList[newPos]
         }
     }
 }
