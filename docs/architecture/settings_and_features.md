@@ -143,7 +143,9 @@ Slim can host **one** standard Android app widget in a slot above the app list (
 Adding a widget is driven from *Settings → Widget → Add a widget*, which fires the system widget picker (`AppWidgetManager.ACTION_APPWIDGET_PICK`). The picker performs the bind on the user's behalf with system privileges, so Slim does **not** need the signature-level `BIND_APPWIDGET` permission. If the chosen provider declares a configuration activity, it's launched via `AppWidgetHost.startAppWidgetConfigureActivityForResult` before the widget is saved. The bound id is persisted in `widget_id`.
 
 ### Hosting & rendering
-`MainActivity` owns an `AppWidgetHost` (stable `HOST_ID`), started/stopped with the Activity lifecycle and re-rendered on resume. The persistent identity is the `(package, HOST_ID)` pair, so a widget bound by the Settings host renders through the MainActivity host. Rendering self-heals: if the provider goes missing (app uninstalled), the stale id is cleared and the slot hidden.
+`MainActivity` owns an `AppWidgetHost` (stable `HOST_ID`), started/stopped with the Activity lifecycle. The persistent identity is the `(package, HOST_ID)` pair, so a widget bound by the Settings host renders through the MainActivity host.
+
+`WidgetHostManager.render()` is called on every `onResume`, but it **skips `removeAllViews` + `createView` when the widget id has not changed** since the last render. This is critical: destroying and recreating `AppWidgetHostView` tears down any embedded surfaces the widget holds and opens an InputFlinger focus-token gap that causes "Application does not have a focused window" ANRs. Re-creating the view is only necessary when the bound widget actually changes. Rendering also self-heals: if the provider goes missing (app uninstalled), the stale id is cleared and the slot hidden.
 
 ### Predictable look across widget shapes
 - The slot height adapts to the widget's declared size (`minHeight`, preferring the API 31+ `targetCellHeight`), clamped to a band (min 64dp → max 45% of screen height) so a tiny widget isn't lost and a huge one can't dominate.

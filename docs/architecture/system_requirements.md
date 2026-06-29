@@ -102,6 +102,47 @@ Slim Launcher is designed with a strict MVVM (Model-View-ViewModel) pattern usin
 
 ---
 
+## 🪟 Window Focus & ANR Stability
+
+Slim is a **home Activity** (`android.intent.category.HOME`). This makes it special in several ways the system won't save you from:
+
+- The system will **not** show an "App not responding" dialog — it kills and restarts the process directly.
+- It is in the critical path of every app-switch, screen-wake, and back-to-home gesture, so any focus-chain disruption hits users constantly rather than occasionally.
+
+The class of ANR that affected Slim historically is `"Input dispatching timed out (Application does not have a focused window)"`. This is distinct from a slow-main-thread ANR: `mCurrentFocus` is correctly set in WindowManager, but InputFlinger's focus token is stale or null. It arises from a **race between a window relayout and InputFlinger's focus assignment**.
+
+### Rules that must be preserved
+
+#### 1. No unnecessary `addFlags` / `clearFlags` in lifecycle callbacks
+`window.addFlags()` and `window.clearFlags()` always dispatch a `WindowManager.LayoutParams` change, which propagates through `ViewRootImpl.setLayoutParams()` → `relayoutWindow()` (a synchronous Binder call). If this fires while the focus token is being assigned, InputFlinger may see the window transiently invalid.
+
+**Rule**: Always guard flag mutations with an equality check against the current `window.attributes.flags` before calling. If the bit is already in the target state, return early.
+
+```kotlin
+// Correct
+val hasFlag = (window.attributes.flags and FLAG_SHOW_WALLPAPER) != 0
+if (hasFlag == show) return
+if (show) window.addFlags(FLAG_SHOW_WALLPAPER)
+else window.clearFlags(FLAG_SHOW_WALLPAPER)
+```
+
+#### 2. Never recreate `AppWidgetHostView` on every resume
+`AppWidgetHostView` may hold embedded surfaces (for interactive widget content). Calling `container.removeAllViews()` detaches those surfaces and their InputChannels; adding a new view re-creates them asynchronously. The gap creates an InputFlinger focus orphan.
+
+**Rule**: `WidgetHostManager.render()` must track `renderedWidgetId` and skip the destroy/recreate cycle when the widget id is unchanged. Only recreate the view when the bound widget actually changes.
+
+#### 3. Dismiss the IME in `onPause`
+If `searchEditText` (or any focusable input) has an open IME connection when the app loses focus, the IME service holds a live `InputConnection` across the focus transition. On screen-wake or app-switch back, the IME's stale token races with WM's new focus grant, producing the same InputFlinger mismatch ANR.
+
+**Rule**: `onPause` must call `imm.hideSoftInputFromWindow(currentFocus?.windowToken, 0)` and `currentFocus?.clearFocus()` unconditionally.
+
+#### 4. No Binder IPC on the main thread in lifecycle callbacks
+`PackageManager.resolveActivity()`, `RoleManager.isRoleHeld()`, and similar calls can stall for hundreds of milliseconds on cold system-server paths. In `onResume`/`onWindowFocusChanged`, this directly delays the window's ability to accept input.
+
+**Rule**: All Binder-heavy checks must be dispatched to `Dispatchers.IO`. See `maybePromptDefaultLauncher()` for the canonical pattern.
+
+---
+
 ## 🔋 Performance & Memory Constraints
 
 > [!WARNING]

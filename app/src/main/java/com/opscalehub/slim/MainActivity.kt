@@ -399,6 +399,18 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         widgetHost.startListening()
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Release the IME input connection before losing the window. If the keyboard
+        // is open (or was recently open) and the user presses home/power, the IME
+        // holds a stale input token that races with focus re-acquisition on the next
+        // resume — the mismatch between InputFlinger's IME focus and WM's window focus
+        // causes "Application does not have a focused window" ANRs.
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        currentFocus?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
+        currentFocus?.clearFocus()
+    }
+
     override fun onStop() {
         super.onStop()
         widgetHost.stopListening()
@@ -827,6 +839,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
     /** Toggles the window's wallpaper flag so opaque modes don't leak wallpaper. */
     private fun setShowWallpaper(show: Boolean) {
+        val hasFlag = (window.attributes.flags and WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER) != 0
+        if (hasFlag == show) return  // skip the relayout — addFlags/clearFlags always trigger one
         if (show) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
         } else {

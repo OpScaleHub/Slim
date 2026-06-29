@@ -4,7 +4,7 @@ tags:
   - slim-launcher
   - documentation
 created: 2026-06-02
-updated: 2026-06-03
+updated: 2026-06-29
 status: In Development
 ---
 
@@ -17,10 +17,13 @@ Welcome to the central documentation hub for **Slim Launcher** (a minimalist, ge
 ## 🗺️ Navigation Map
 
 ### 🏛️ Architecture & Requirements
-- **[[architecture/system_requirements|System Requirements & API Architecture]]**: Deep-dive into Android system services, permissions, and background lifecycle.
+- **[[architecture/system_requirements|System Requirements & API Architecture]]**: Deep-dive into Android system services, permissions, background lifecycle, and **window focus & ANR stability rules**.
 - **[[architecture/ui_ux_layout|UI/UX Layout & Wave Gesture Mechanics]]**: Detailed specifications for the minimalist scroll and wave touch mechanics.
-- **[[architecture/settings_and_features|Settings, Feature Toggles & Search Behavior]]**: The Settings screen, preference storage, smart search ranking, weather modes, and adaptive theming.
+- **[[architecture/settings_and_features|Settings, Feature Toggles & Search Behavior]]**: The Settings screen, preference storage, smart search ranking, weather modes, adaptive theming, and widget hosting.
 - **[[distribution/fdroid_publishing|F-Droid Publishing & Compliance Guide]]**: Security, FOSS principles, and build setups for F-Droid submission.
+
+> [!NOTE]
+> The repo root also contains `CLAUDE.md` — an agent-facing quick-reference for the most critical invariants (ANR rules, Back handling, widget binding). Claude Code loads it automatically on every session.
 
 ### 🤖 Agent Development Protocols
 - **[[agent_protocols/agent_development_plan|AI-Led Development Plan]]**: The step-by-step roadmap for how I (the AI) will build and test the codebase.

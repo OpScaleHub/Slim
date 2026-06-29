@@ -33,6 +33,7 @@ class WidgetHostManager(
 
     private val widgetManager = AppWidgetManager.getInstance(context)
     private val host = AppWidgetHost(context, HOST_ID)
+    private var renderedWidgetId = Int.MIN_VALUE  // sentinel: nothing rendered yet
 
     /** Begin receiving widget updates. Call from Activity.onStart. */
     fun startListening() {
@@ -62,6 +63,11 @@ class WidgetHostManager(
             hide()
             return
         }
+        // Skip the removeAllViews+createView churn when nothing changed. Recreating
+        // AppWidgetHostView on every onResume tears down and re-creates any embedded
+        // surfaces the widget holds, causing an InputFlinger focus-token gap that
+        // triggers "Application does not have a focused window" ANRs.
+        if (id == renderedWidgetId) return
         val info = widgetManager.getAppWidgetInfo(id)
         if (info == null) {
             // Provider vanished (app uninstalled / widget revoked) — forget it.
@@ -104,11 +110,13 @@ class WidgetHostManager(
             )
         )
         container.visibility = View.VISIBLE
+        renderedWidgetId = id
     }
 
     private fun hide() {
         container.removeAllViews()
         container.visibility = View.GONE
+        renderedWidgetId = Int.MIN_VALUE
     }
 
     /** Width in dp available to the widget: screen minus the alphabet rail + margins. */
