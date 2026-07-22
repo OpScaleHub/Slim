@@ -141,6 +141,15 @@ If `searchEditText` (or any focusable input) has an open IME connection when the
 
 **Rule**: All Binder-heavy checks must be dispatched to `Dispatchers.IO`. See `maybePromptDefaultLauncher()` for the canonical pattern.
 
+#### 5. Restore search-panel keyboard state in `onResume`
+When the search panel is open and the screen turns off (or power button is pressed), `onPause()` hides the IME but the panel stays visible. On return, the user sees the search bar with no keyboard and no way to type.
+
+**Rule**: `onPause()` must capture `imeWasOpenBeforePause = searchPanel.visibility == VISIBLE && searchEditText.hasFocus()` *before* hiding the IME. `onResume()` then:
+- If `imeWasOpenBeforePause == true` (screen-off while typing): defer `requestFocus()` + `showSoftInput` via `post{}` so the window's focus token has settled.
+- If `imeWasOpenBeforePause == false` (Home press with panel open): dismiss the search panel silently (`searchPanel.visibility = GONE`).
+
+The `post{}` deferral is essential — firing `showSoftInput` before the window has re-acquired input focus races with WM on aggressive OEM ROMs (ColorOS / Oplus Hans) and silently no-ops or triggers the "no focused window" ANR.
+
 ---
 
 ## 🔋 Performance & Memory Constraints

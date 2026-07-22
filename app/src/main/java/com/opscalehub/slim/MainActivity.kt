@@ -106,6 +106,9 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     // Prompt to become the default launcher at most once per process so we
     // nudge after a fresh install without nagging on every resume.
     private var defaultHomePrompted = false
+    // Whether the IME was open when onPause() fired — used to restore keyboard
+    // state on resume only when the screen turned off (not after Home presses).
+    private var imeWasOpenBeforePause = false
     // The RoleManager HOME request must run for-result so the system can read
     // our calling package; plain startActivity() gives it a null caller and the
     // dialog bails instantly. The result is ignored — onResume re-checks state.
@@ -401,6 +404,11 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
     override fun onPause() {
         super.onPause()
+        // Capture whether the keyboard was open before we tear it down.
+        // onResume uses this to distinguish "screen-off while searching"
+        // (restore keyboard) from "user pressed Home" (leave search bar empty).
+        imeWasOpenBeforePause =
+            searchPanel.visibility == View.VISIBLE && searchEditText.hasFocus()
         // Release the IME input connection before losing the window. If the keyboard
         // is open (or was recently open) and the user presses home/power, the IME
         // holds a stale input token that races with focus re-acquisition on the next
@@ -431,6 +439,36 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         updateWeather()
         // Pick up newly installed/removed apps — with retry for timing (F-Droid etc.)
         scheduleAppRefresh()
+
+        // Restore search-panel state after a pause.
+        //
+        // Case 1 — Screen turned off / power button while keyboard was open
+        //          (imeWasOpenBeforePause == true):
+        //          The panel is still visible but the IME was torn down.
+        //          Re-request focus and show the keyboard once the window is
+        //          fully resumed.  The post{} defers to the next frame so
+        //          the window's focus token has time to settle — firing
+        //          immediately can still race with WM on aggressive OEM ROMs
+        //          (ColorOS / Oplus Hans).
+        //
+        // Case 2 — User pressed Home while search panel was open
+        //          (imeWasOpenBeforePause == false):
+        //          The panel should not stay visible with no keyboard.
+        //          Dismiss it silently so the user returns to a clean home
+        //          state.
+        if (searchPanel.visibility == View.VISIBLE) {
+            if (imeWasOpenBeforePause) {
+                searchEditText.post {
+                    searchEditText.requestFocus()
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT)
+                }
+            } else {
+                // Home press left the panel dangling — reset silently.
+                searchPanel.visibility = View.GONE
+                searchEditText.setText("")
+            }
+        }
 
         // Battery level receiver for real-time updates (register once, not on every resume)
         if (prefs.immersiveMode && !batteryReceiverRegistered) {
@@ -724,15 +762,18 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             searchPanel.alpha = 0f
             searchPanel.visibility = View.VISIBLE
             showRecentApps()
-            searchEditText.requestFocus()
-            // Show keyboard only after the panel animation completes so the window
-            // is guaranteed to have focus — showSoftInput silently no-ops if it fires
-            // before the window holds input focus (was the "keyboard won't pop up" bug).
+            // Defer requestFocus + keyboard to after the animation completes.
+            // Calling requestFocus() mid-animation races with WM's focus-token
+            // assignment during resume transitions — the input system sees a
+            // stale token and the keyboard silently no-shows (or worse, the
+            // "no focused window" ANR fires).  Moving both into withEndAction
+            // ensures the window has settled before we claim input focus.
             searchPanel.animate()
                 .scaleX(1f).scaleY(1f).alpha(1f)
                 .setDuration(280)
                 .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
                 .withEndAction {
+                    searchEditText.requestFocus()
                     val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
                     imm.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT)
                 }

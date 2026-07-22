@@ -87,6 +87,14 @@ Ties within a rank are sorted alphabetically.
 ### Recent searches
 When an app is launched *from search* (results or chips), its package is pushed onto the history (max 8, deduplicated). The chips row shows these apps whenever the search panel opens with an empty query — instant re-launch without making them favorites. The feature can be disabled or cleared in Settings.
 
+### Pause / resume lifecycle
+The search panel's visibility survives across `onPause` → `onResume` transitions:
+
+- **Screen off / power button while typing** (`imeWasOpenBeforePause == true`): the panel stays visible; `onResume` re-requests focus and shows the keyboard via `post{}` (deferred one frame to avoid racing with the window manager's focus-token assignment).
+- **Home press with panel open** (`imeWasOpenBeforePause == false`): `onResume` dismisses the panel silently so the user returns to a clean home state.
+
+This avoids the previous bug where the search bar appeared on resume with no keyboard and no way to type.
+
 ## 🎨 Adaptive Theming
 
 The launcher draws directly on the system wallpaper, so readability is handled at runtime:
