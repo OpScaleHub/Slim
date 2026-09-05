@@ -34,6 +34,8 @@ All options are stored in `SharedPreferences` (`slim_launcher_prefs`) behind a t
 | `show_clock` | Boolean | `true` | Show/hide the header clock |
 | `show_date` | Boolean | `true` | Show/hide the header date |
 | `use_24_hour` | Boolean | `true` | 24-hour vs 12-hour clock |
+| `world_clock_tz` | String | `""` | IANA timezone id for the optional secondary clock; empty = off |
+| `world_clock_label` | String | `""` | Display label (city name) for the world clock |
 | `weather_mode` | String | `simulated` | `off` / `simulated` (ambient, offline) / `real` (Open-Meteo) |
 | `weather_city` / `weather_lat` / `weather_lon` | String/Float | — | Geocoded city for real weather |
 | `weather_fahrenheit` | Boolean | `false` | °C vs °F |
@@ -59,6 +61,17 @@ graph LR
 1. **Off** — header shows clock/date only.
 2. **Ambient** (default) — an offline, seasonal estimate. Clearly labeled in Settings as an estimate; makes zero network calls.
 3. **Real** — the user types a city; `WeatherService` geocodes it via the Open-Meteo geocoding API and fetches current conditions (WMO code → emoji + description) at most every 30 minutes. Requires the `INTERNET` permission, which is used for nothing else.
+
+### Upcoming-change hint
+The same forecast request also asks for `hourly=weather_code,precipitation_probability` (Open-Meteo returns it in one call, so this costs a few extra KB, not an extra request) and `timezone=auto` so hourly buckets and labels land in the location's own local time rather than GMT. `WeatherService.findUpcomingChange()` scans the next 9 hourly entries for the first hour where precipitation becomes likely (category changes from dry to wet, or probability ≥ 50%) and appends a short suffix like `· rain by 4pm` to the chip — silent otherwise, so the chip stays exactly as terse as before by default.
+
+The current-conditions call also requests `precipitation` (mm) alongside the categorical `weather_code`. If the API reports live precipitation but the code hasn't caught up to a rain/snow/storm category, the code is treated as light rain for display purposes — the model's WMO code is a forecast label and can lag a live measurement. Note this still can't surface very localized, short-lived convective showers the underlying model's grid never resolved in the first place; that's an inherent limitation of forecast-model data, not something client-side logic can work around.
+
+## 🕒 World Clock
+
+An optional single secondary clock (Settings → Home → World clock), rendered inline at the bottom-right of the primary clock, baseline-aligned, smaller and at reduced alpha so it reads as a companion rather than a second competing line. Backed by `world_clock_tz`/`world_clock_label`; ticks off the same handler-based clock loop as the primary time (see below), reformatted with a `SimpleDateFormat` pinned to the configured `TimeZone`.
+
+Android has no shared, cross-OEM API for the world clocks a user has configured in the stock Clock app — that list lives in the Clock app's own private database. So this is Slim's own setting, picked from a curated list of ~30 major cities (`WorldClockOptions.kt`) rather than the full ~450-entry IANA zone database, in keeping with the picker staying as minimal as everything else.
 
 ## 🔍 Search Panel Behavior
 
@@ -104,6 +117,12 @@ The launcher draws directly on the system wallpaper, so readability is handled a
 3. The accent color uses **Material You** (`system_accent1_200`) on Android 12+, indigo otherwise.
 4. Header text carries a subtle shadow so it stays legible even on busy wallpapers.
 5. The alphabet index (`WaveGestureView`) and home app list receive the same adaptive palette; the search panel keeps fixed light-on-dark colors since it has its own dark surface.
+6. The Favorites section fades progressively toward the bottom of that section (`AppListAdapter.FAVORITE_FADE_STEP`/`FAVORITE_FADE_FLOOR`), a purely decorative touch applied per-row in `onBindViewHolder`. `appRecyclerView.itemAnimator` is disabled — RecyclerView's default item animator runs its own alpha fade on every item-change update and resets alpha to 1 when it finishes, which was silently clobbering this effect on any list rebuild (notification events, icon/color toggles, app refresh).
+7. In-app dialogs (long-press menu, rename, hidden apps) use `Theme.Slim.Dialog`, matching the app's own dark surface palette (`surface_elevated`/`border_color`) instead of the stock light Material dialog chrome.
+
+## 🔔 Corner Status Row
+
+The notification-count and battery chips (immersive mode only) live in their own `statusInfoRow`, anchored to the top-right corner of the screen independent of the header column — not stacked as a row under the clock/date, which would take vertical space away from the clock. It clears the status bar inset the same way the header does (`setupWindowInsets()` pads both).
 
 ## 🧭 Gesture Rules
 
