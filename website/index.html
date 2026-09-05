@@ -7,7 +7,17 @@
     <title>Slim Launcher - Minimalist Android Launcher</title>
     <!-- SEO Meta Tags -->
     <meta name="description" content="Slim Launcher is an ultra-minimalist, gesture-driven Android home screen alternative with home-screen widget support. Focused on speed, efficiency, and zero telemetry.">
-    <meta name="keywords" content="Android Launcher, Niagara Launcher alternative, Minimalist Launcher, Android widgets, home screen widget, F-Droid Launcher, Open Source Android">
+    <meta name="keywords" content="Android Launcher, Niagara Launcher alternative, Minimalist Launcher, Android widgets, home screen widget, Open Source Android">
+    <!-- Open Graph / Twitter Card -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Slim Launcher - Minimalist Android Launcher">
+    <meta property="og:description" content="A premium, gesture-centric Android launcher designed for speed, focus, and single-handed efficiency. Zero clutter, zero distractions, zero telemetry.">
+    <meta property="og:image" content="https://playfoundryhq.github.io/Slim/og-image.png">
+    <meta property="og:url" content="https://playfoundryhq.github.io/Slim/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Slim Launcher - Minimalist Android Launcher">
+    <meta name="twitter:description" content="A premium, gesture-centric Android launcher designed for speed, focus, and single-handed efficiency. Zero clutter, zero distractions, zero telemetry.">
+    <meta name="twitter:image" content="https://playfoundryhq.github.io/Slim/og-image.png">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +46,7 @@
                 <a href="#download" class="nav-link">Download</a>
                 <a href="#about" class="nav-link">About</a>
             </nav>
-            <a href="https://github.com/OpScaleHub/Slim" class="github-btn" target="_blank" id="github-header-btn">
+            <a href="https://github.com/PlayFoundryHQ/Slim" class="github-btn" target="_blank" id="github-header-btn">
                 <i class="fa-brands fa-github"></i> <span>GitHub</span>
             </a>
         </div>
@@ -52,11 +62,11 @@
                     A premium, gesture-centric Android launcher designed for speed, focus, and single-handed efficiency. Zero clutter, zero distractions, zero telemetry.
                 </p>
                 <div class="hero-actions">
-                    <a href="https://github.com/OpScaleHub/Slim/releases/latest/download/slim-launcher.apk" class="btn btn-primary" id="download-apk-btn">
+                    <a href="https://github.com/PlayFoundryHQ/Slim/releases/latest/download/slim-launcher.apk" class="btn btn-primary" id="download-apk-btn">
                         <i class="fa-solid fa-download"></i> Download APK
                     </a>
-                    <a href="#download" class="btn btn-secondary">
-                        <i class="fa-solid fa-store"></i> View F-Droid
+                    <a href="https://github.com/PlayFoundryHQ/Slim" class="btn btn-secondary" target="_blank">
+                        <i class="fa-brands fa-github"></i> View Source
                     </a>
                 </div>
             </div>
@@ -79,10 +89,16 @@
                         <div class="launcher-interface">
                             <!-- Context Block -->
                             <div class="context-block">
-                                <div class="date" id="phone-date">Tuesday, June 2</div>
-                                <div class="weather">
-                                    <span class="weather-temp"><i class="fa-solid fa-cloud-sun"></i> 22°C</span>
-                                    <span class="weather-location">London</span>
+                                <div class="clock-row">
+                                    <span class="clock" id="phone-clock">10:09</span>
+                                    <span class="world-clock">18:39 · New York</span>
+                                </div>
+                                <div class="date-weather-row">
+                                    <div class="date" id="phone-date">Tuesday, June 2</div>
+                                    <div class="weather">
+                                        <span class="weather-temp"><i class="fa-solid fa-cloud-sun"></i> 22°C</span>
+                                        <span class="weather-location">London</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -173,6 +189,7 @@
                     </div>
                 </div>
                 <div class="visual-hint"><i class="fa-solid fa-arrow-pointer"></i> Drag along the letters to try the wave scroll!</div>
+                <a href="hero-screenshot.png" target="_blank" class="real-screenshot-link"><i class="fa-solid fa-mobile-screen"></i> This is a live simulation — see a real device screenshot</a>
             </div>
         </div>
     </section>
@@ -283,9 +300,9 @@
     <section class="download-section" id="download">
         <div class="container">
             <div class="download-box">
-                <h2>Join the Beta Program</h2>
-                <p>Slim Launcher is actively maintained and distributed completely free without in-app purchases or subscription lockouts.</p>
-                
+                <h2>Get Slim</h2>
+                <p>Slim is an early-stage, sideloaded project — not yet on any app store — distributed completely free, with no in-app purchases or subscription lockouts.</p>
+
                 <div class="download-grid">
                     <!-- GitHub Card -->
                     <div class="download-card">
@@ -294,18 +311,18 @@
                             <h3>GitHub Releases</h3>
                         </div>
                         <p>Every build on main is automatically signed and published. Grab the latest APK directly, or browse all versions.</p>
-                        <a href="https://github.com/OpScaleHub/Slim/releases/latest/download/slim-launcher.apk" class="btn btn-primary" id="download-github-releases">Get Latest APK</a>
-                        <a href="https://github.com/OpScaleHub/Slim/releases" class="btn btn-secondary" target="_blank" id="all-releases-link" style="margin-top: 8px;">All Releases</a>
+                        <a href="https://github.com/PlayFoundryHQ/Slim/releases/latest/download/slim-launcher.apk" class="btn btn-primary" id="download-github-releases">Get Latest APK</a>
+                        <a href="https://github.com/PlayFoundryHQ/Slim/releases" class="btn btn-secondary" target="_blank" id="all-releases-link" style="margin-top: 8px;">All Releases</a>
                     </div>
-                    
-                    <!-- F-Droid Card -->
+
+                    <!-- Build from Source Card -->
                     <div class="download-card">
                         <div class="card-head">
-                            <i class="fa-solid fa-cubes"></i>
-                            <h3>F-Droid Store</h3>
+                            <i class="fa-solid fa-code-branch"></i>
+                            <h3>Build From Source</h3>
                         </div>
-                        <p>Install via the F-Droid store for automated, open-source updates and signature checks.</p>
-                        <a href="https://f-droid.org" class="btn btn-secondary" target="_blank" id="download-fdroid">Browse F-Droid</a>
+                        <p>Every line is public. Clone the repo and build it yourself with Android Studio or Gradle — no signing keys required for a debug build.</p>
+                        <a href="https://github.com/PlayFoundryHQ/Slim#-building-from-source" class="btn btn-secondary" target="_blank" id="build-from-source-link">View Instructions</a>
                     </div>
                 </div>
             </div>
@@ -317,7 +334,7 @@
         <div class="container">
             <div class="download-box">
                 <h2>Who We Are</h2>
-                <p>Slim is built in the open by <strong>OpScaleHub</strong> and community contributors. No company backing, no ads, no telemetry — just people who want a calmer phone. Every line of code is public, every decision is discussed in the open.</p>
+                <p>Slim is built in the open by <strong>PlayFoundryHQ</strong> and community contributors. No company backing, no ads, no telemetry — just people who want a calmer phone. Every line of code is public, every decision is discussed in the open.</p>
 
                 <div class="download-grid">
                     <div class="download-card">
@@ -335,7 +352,7 @@
                             <h3>Contribute</h3>
                         </div>
                         <p>Bug reports, feature requests, and pull requests are all welcome on GitHub.</p>
-                        <a href="https://github.com/OpScaleHub/Slim/issues" class="btn btn-secondary" target="_blank" id="contribute-btn">Open an Issue</a>
+                        <a href="https://github.com/PlayFoundryHQ/Slim/issues" class="btn btn-secondary" target="_blank" id="contribute-btn">Open an Issue</a>
                     </div>
                 </div>
             </div>
@@ -345,10 +362,10 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container footer-container">
-            <p>&copy; 2026 Opscalehub. Built under the Apache License 2.0.</p>
+            <p>&copy; 2026 PlayFoundryHQ. Built under the Apache License 2.0.</p>
             <div class="footer-links">
-                <a href="https://github.com/OpScaleHub/Slim" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
-                <a href="https://github.com/OpScaleHub/Slim/issues" target="_blank"><i class="fa-solid fa-bug"></i> Report Bug</a>
+                <a href="https://github.com/PlayFoundryHQ/Slim" target="_blank"><i class="fa-brands fa-github"></i> GitHub</a>
+                <a href="https://github.com/PlayFoundryHQ/Slim/issues" target="_blank"><i class="fa-solid fa-bug"></i> Report Bug</a>
                 <a href="mailto:lcommonid@gmail.com"><i class="fa-solid fa-envelope"></i> Contact</a>
             </div>
         </div>
@@ -363,17 +380,20 @@
             dateElement.textContent = new Date().toLocaleDateString('en-US', options);
         }
 
-        // Set dynamic time in phone mockup
+        // Set dynamic time in phone mockup (status bar clock + Slim's own big clock)
         function updateTime() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            hours = hours < 10 ? '0' + hours : hours;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            const formatted = `${hours}:${minutes}`;
+
             const timeElement = document.getElementById('phone-time');
-            if (timeElement) {
-                const now = new Date();
-                let hours = now.getHours();
-                let minutes = now.getMinutes();
-                hours = hours < 10 ? '0' + hours : hours;
-                minutes = minutes < 10 ? '0' + minutes : minutes;
-                timeElement.textContent = `${hours}:${minutes}`;
-            }
+            if (timeElement) timeElement.textContent = formatted;
+
+            const clockElement = document.getElementById('phone-clock');
+            if (clockElement) clockElement.textContent = formatted;
         }
         updateTime();
         setInterval(updateTime, 1000);

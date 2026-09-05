@@ -295,19 +295,52 @@ body {
     margin-bottom: 24px;
 }
 
-.context-block .date {
-    font-size: 20px;
-    font-weight: 700;
+.context-block .clock-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.context-block .clock {
+    font-size: 32px;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: 0.01em;
     color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.context-block .world-clock {
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    padding-bottom: 2px;
+}
+
+.date-weather-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Rounded chip sits on the date, not the weather — mirrors the real app. */
+.context-block .date {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    padding: 5px 10px;
+    border-radius: 12px;
 }
 
 .context-block .weather {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-top: 4px;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--accent);
 }
 
 /* Home-screen widget slot in the phone mockup */
@@ -532,6 +565,23 @@ body {
     align-items: center;
     gap: 8px;
     animation: bounce 2s infinite;
+}
+
+.real-screenshot-link {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: opacity 0.2s, color 0.2s;
+}
+
+.real-screenshot-link:hover {
+    opacity: 1;
+    color: var(--accent);
 }
 
 @keyframes bounce {
