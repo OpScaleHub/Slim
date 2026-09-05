@@ -3,7 +3,7 @@ name: Publish Release
 # Builds a signed release APK on every push to main that touches app code,
 # and publishes it to GitHub Releases (tagged by versionName, marked latest).
 # The website's "Download APK" button points to:
-#   https://github.com/OpScaleHub/Slim/releases/latest/download/slim-launcher.apk
+#   https://github.com/PlayFoundryHQ/Slim/releases/latest/download/slim-launcher.apk
 
 on:
   push:

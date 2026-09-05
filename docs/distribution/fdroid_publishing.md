@@ -33,9 +33,9 @@ This YAML metadata file is submitted to the F-Droid metadata repository (`fdroid
 Categories:
   - System
 License: Apache-2.0
-WebSite: https://opscalehub.github.io/Slim
-SourceCode: https://github.com/OpScaleHub/Slim
-IssueTracker: https://github.com/OpScaleHub/Slim/issues
+WebSite: https://playfoundryhq.github.io/Slim
+SourceCode: https://github.com/PlayFoundryHQ/Slim
+IssueTracker: https://github.com/PlayFoundryHQ/Slim/issues
 
 Summary: Minimalist, gesture-driven launcher focused on efficiency.
 Description: |-
@@ -50,7 +50,7 @@ Description: |-
   - Offline-first: Network is used only for opt-in weather (Open-Meteo).
 
 RepoType: git
-Repo: https://github.com/OpScaleHub/Slim.git
+Repo: https://github.com/PlayFoundryHQ/Slim.git
 
 Builds:
   - versionName: 1.0.0

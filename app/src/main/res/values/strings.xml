@@ -98,15 +98,15 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_description">Slim is an ultra-minimalist, gesture-based Android launcher built for speed, focus, and single-handed use. Free and open source, forever.</string>
     <string name="about_who_we_are">Who we are</string>
-    <string name="about_who_we_are_body">Slim is built in the open by OpScaleHub and community contributors. No company, no ads, no telemetry — just people who want a calmer phone.</string>
+    <string name="about_who_we_are_body">Slim is built in the open by PlayFoundryHQ and community contributors. No company, no ads, no telemetry — just people who want a calmer phone.</string>
     <string name="about_github">GitHub repository</string>
     <string name="about_website">Website</string>
     <string name="about_report_bug">Report a bug</string>
     <string name="about_contact">Contact us</string>
     <string name="about_license">License: Apache 2.0</string>
 
-    <string name="url_github">https://github.com/OpScaleHub/Slim</string>
-    <string name="url_website">https://opscalehub.github.io/Slim/</string>
-    <string name="url_issues">https://github.com/OpScaleHub/Slim/issues</string>
+    <string name="url_github">https://github.com/PlayFoundryHQ/Slim</string>
+    <string name="url_website">https://playfoundryhq.github.io/Slim/</string>
+    <string name="url_issues">https://github.com/PlayFoundryHQ/Slim/issues</string>
     <string name="contact_email">lcommonid@gmail.com</string>
 </resources>
