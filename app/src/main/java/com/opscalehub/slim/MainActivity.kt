@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private lateinit var historyScroll: HorizontalScrollView
     private lateinit var txtNoResults: TextView
     private lateinit var txtClock: TextView
+    private lateinit var txtWorldClock: TextView
     private lateinit var txtDate: TextView
     private lateinit var txtWeather: TextView
     private lateinit var txtLetterPopup: TextView
@@ -88,7 +89,6 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private var favorites = listOf<AppItem>()
     private var filteredList = listOf<AdapterItem>()
 
-    private val clockTimer = Timer()
     private lateinit var gestureDetector: GestureDetector
 
     // State controlling list visibility
@@ -103,6 +103,12 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     // Actual height of the system gesture nav zone — read from window insets
     private var systemGestureHeight = 0
     private var weatherFetchInProgress = false
+    // Swipe thresholds, computed once from density so gesture feel is consistent
+    // across screen densities instead of the raw px constants this used to be
+    // hardcoded to (which were tuned on one density and drifted on others).
+    private var swipeDistanceThresholdPx = 0f
+    private var swipeVelocityThresholdPxPerSec = 0f
+    private var swipeUpDistanceThresholdPx = 0f
     // Prompt to become the default launcher at most once per process so we
     // nudge after a fresh install without nagging on every resume.
     private var defaultHomePrompted = false
@@ -137,9 +143,32 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     private val clockDateFormat = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault())
     private val clockTime24Format = SimpleDateFormat("HH:mm", Locale.getDefault())
     private val clockTime12Format = SimpleDateFormat("h:mm a", Locale.getDefault())
+    // Secondary "world clock" formatters — same patterns as above but pinned to
+    // the configured timezone instead of the device default. Rebuilt only when
+    // the configured timezone changes (in applyHeaderPreferences), not per tick.
+    private val worldClockTime24Format = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val worldClockTime12Format = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private var appliedWorldClockTimeZoneId = ""
     private var clockTicks = 0
     // Debounce adapter rebuilds triggered by rapid notification events (e.g. music player).
     private val pendingAdapterUpdate = Runnable { updateAdapterData() }
+    // Self-rescheduling clock tick — started in onStart, stopped in onStop, so it
+    // never runs (and never competes with input on the main thread) while Slim is
+    // backgrounded. Previously a java.util.Timer that ran for the entire process
+    // lifetime regardless of visibility, which is wasteful for a launcher that can
+    // sit backgrounded for days and showed up as main-thread jank ("Slow UI thread")
+    // in dumpsys gfxinfo.
+    private val clockTickRunnable = object : Runnable {
+        override fun run() {
+            val now = Date()
+            txtClock.text = (if (prefs.use24HourFormat) clockTime24Format else clockTime12Format).format(now)
+            txtDate.text = clockDateFormat.format(now)
+            updateWorldClockText()
+            // Weather has its own 60s cache; no need to check on every tick.
+            if (++clockTicks % 60 == 0) updateWeather()
+            handler.postDelayed(this, 1000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -156,6 +185,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         historyScroll = findViewById(R.id.historyScroll)
         txtNoResults = findViewById(R.id.txtNoResults)
         txtClock = findViewById(R.id.txtClock)
+        txtWorldClock = findViewById(R.id.txtWorldClock)
         txtDate = findViewById(R.id.txtDate)
         txtWeather = findViewById(R.id.txtWeather)
         txtLetterPopup = findViewById(R.id.txtLetterPopup)
@@ -164,6 +194,14 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         txtBattery = findViewById(R.id.txtBattery)
 
         setupWindowInsets()
+
+        // Original thresholds (120px / 80px-per-sec / 60px) were tuned at ~3x
+        // density and hardcoded — re-derive them as dp so feel is consistent
+        // across devices.
+        val density = resources.displayMetrics.density
+        swipeDistanceThresholdPx = 40f * density
+        swipeVelocityThresholdPxPerSec = 27f * density
+        swipeUpDistanceThresholdPx = 20f * density
 
         // Initialize Database, Repository & Preferences
         db = AppDatabase.getDatabase(this)
@@ -183,6 +221,13 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         }
         appRecyclerView.layoutManager = LinearLayoutManager(this)
         appRecyclerView.adapter = adapter
+        // The default ItemAnimator runs its own alpha fade on every item-change
+        // update (which fires often here: notification events, icon/color
+        // toggles, app refreshes) and resets alpha to 1 when it finishes —
+        // clobbering the Favorites fade-downward effect set in onBindViewHolder
+        // moments after it's applied. Disabling it isn't a loss for this list;
+        // it never had its own row-add/remove flourish to begin with.
+        appRecyclerView.itemAnimator = null
 
         // Set up search results RecyclerView (inside the floating search panel)
         searchAdapter = AppListAdapter(this, emptyList()) { appItem, isLongClick ->
@@ -233,14 +278,14 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
                 // Swipe up opens search — only from the home (favorites) state,
                 // never while browsing the alphabetical list or scrubbing.
-                if (yDiff > 120f && Math.abs(velocityY) > 80f) {
+                if (yDiff > swipeDistanceThresholdPx && Math.abs(velocityY) > swipeVelocityThresholdPxPerSec) {
                     if (prefs.swipeUpForSearch && !isAlphabetScrubbing) {
                         showSearchBar()
                         return true
                     }
                 }
                 // Swipe down opens the system notification shade
-                if (yDiff < -120f && Math.abs(velocityY) > 80f) {
+                if (yDiff < -swipeDistanceThresholdPx && Math.abs(velocityY) > swipeVelocityThresholdPxPerSec) {
                     if (prefs.swipeDownForNotifications && !isAlphabetScrubbing &&
                         searchPanel.visibility != View.VISIBLE
                     ) {
@@ -249,7 +294,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                     }
                 }
                 // Horizontal swipes exit alphabet apps view back to favorites list
-                if (Math.abs(xDiff) > 120f && Math.abs(velocityX) > 80f) {
+                if (Math.abs(xDiff) > swipeDistanceThresholdPx && Math.abs(velocityX) > swipeVelocityThresholdPxPerSec) {
                     if (isAlphabetScrubbing) {
                         exitAlphabetMode()
                         return true
@@ -276,8 +321,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             }
         })
 
-        // Clock & Weather Update Loops
-        startClockUpdates()
+        // Clock & Weather Update Loops — actually started/stopped in onStart/onStop
+        // so they don't tick while backgrounded.
 
         // Load Apps and start Flow Collection
         lifecycleScope.launch {
@@ -329,6 +374,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         window.setDecorFitsSystemWindows(false)
         val baseHeaderTop = headerLayout.paddingTop
         val baseListBottom = appRecyclerView.paddingBottom
+        val baseStatusRowTop = statusInfoRow.paddingTop
         window.decorView.setOnApplyWindowInsetsListener { view, insets ->
             val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
             val gestureInsets = insets.getInsets(android.view.WindowInsets.Type.systemGestures())
@@ -344,6 +390,12 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             appRecyclerView.setPadding(
                 appRecyclerView.paddingLeft, appRecyclerView.paddingTop,
                 appRecyclerView.paddingRight, baseListBottom + bars.bottom
+            )
+            // Corner status row (notification/battery) clears the status bar the
+            // same way the header does, even though it's a separate view now.
+            statusInfoRow.setPadding(
+                statusInfoRow.paddingLeft, baseStatusRowTop + bars.top,
+                statusInfoRow.paddingRight, statusInfoRow.paddingBottom
             )
             view.onApplyWindowInsets(insets)
         }
@@ -400,6 +452,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     override fun onStart() {
         super.onStart()
         widgetHost.startListening()
+        handler.removeCallbacks(clockTickRunnable)
+        handler.post(clockTickRunnable)
     }
 
     override fun onPause() {
@@ -422,6 +476,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
     override fun onStop() {
         super.onStop()
         widgetHost.stopListening()
+        handler.removeCallbacks(clockTickRunnable)
     }
 
     override fun onResume() {
@@ -535,20 +590,26 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         txtDate.visibility = if (prefs.showDate) View.VISIBLE else View.GONE
         txtWeather.visibility =
             if (prefs.weatherMode == SlimPreferences.WEATHER_OFF) View.GONE else View.VISIBLE
+
+        val worldTz = prefs.worldClockTimeZoneId
+        if (worldTz != appliedWorldClockTimeZoneId) {
+            appliedWorldClockTimeZoneId = worldTz
+            if (worldTz.isNotEmpty()) {
+                val tz = TimeZone.getTimeZone(worldTz)
+                worldClockTime24Format.timeZone = tz
+                worldClockTime12Format.timeZone = tz
+            }
+        }
+        txtWorldClock.visibility =
+            if (prefs.showClock && worldTz.isNotEmpty()) View.VISIBLE else View.GONE
+        updateWorldClockText()
     }
 
-    private fun startClockUpdates() {
-        clockTimer.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                runOnUiThread {
-                    val now = Date()
-                    txtClock.text = (if (prefs.use24HourFormat) clockTime24Format else clockTime12Format).format(now)
-                    txtDate.text = clockDateFormat.format(now)
-                    // Weather has its own 60s cache; no need to check on every tick.
-                    if (++clockTicks % 60 == 0) updateWeather()
-                }
-            }
-        }, 0, 1000)
+    private fun updateWorldClockText() {
+        if (txtWorldClock.visibility != View.VISIBLE) return
+        val now = Date()
+        val time = (if (prefs.use24HourFormat) worldClockTime24Format else worldClockTime12Format).format(now)
+        txtWorldClock.text = "$time · ${prefs.worldClockLabel}"
     }
 
     private fun updateWeather() {
@@ -623,7 +684,11 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             val weather = weatherService.fetchCurrentWeather(lat, lon, prefs.useFahrenheit)
             if (weather != null) {
                 val unit = if (prefs.useFahrenheit) "°F" else "°C"
-                val text = "${weather.emoji()} ${weather.temperature.roundToInt()}$unit · ${weather.description()}"
+                // The upcoming-change hint only appends when something's actually
+                // coming (see WeatherService.findUpcomingChange) — the chip stays
+                // exactly as terse as before the rest of the time.
+                val changeNote = weather.upcomingChange?.let { " · $it" } ?: ""
+                val text = "${weather.emoji()} ${weather.temperature.roundToInt()}$unit · ${weather.description()}$changeNote"
                 prefs.lastWeatherText = text
                 prefs.lastWeatherFetchTime = System.currentTimeMillis()
                 txtWeather.text = text
@@ -681,6 +746,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             val accent = resolveAccentColor()
 
             txtClock.setTextColor(primary)
+            txtWorldClock.setTextColor(secondary)
             txtDate.setTextColor(secondary)
             txtWeather.setTextColor(accent)
             waveGestureView.setPalette(primary, muted)
@@ -719,7 +785,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         if (ev.action == MotionEvent.ACTION_UP && !touchStartedOnWave) {
             val inSystemGestureZone = lastDownY > resources.displayMetrics.heightPixels - systemGestureHeight
             val dy = lastDownY - ev.getY(0)
-            if (!inSystemGestureZone && dy > 60f && prefs.swipeUpForSearch && !isAlphabetScrubbing
+            if (!inSystemGestureZone && dy > swipeUpDistanceThresholdPx && prefs.swipeUpForSearch && !isAlphabetScrubbing
                 && searchPanel.visibility != View.VISIBLE) {
                 showSearchBar()
             }
@@ -829,7 +895,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
     override fun onDestroy() {
         super.onDestroy()
-        clockTimer.cancel()
+        handler.removeCallbacks(clockTickRunnable)
         handler.removeCallbacks(returnToFavoritesRunnable)
         handler.removeCallbacks(pendingAdapterUpdate)
         handler.removeCallbacks(refreshRetry1)
@@ -1027,7 +1093,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
     // Snapshot notification/media state from the registry into an AdapterItem so
     // DiffUtil can detect per-row content changes without hitting the registry in bind.
-    private fun adapterItemForApp(app: AppItem, forceNotif: Boolean = false): AdapterItem {
+    private fun adapterItemForApp(app: AppItem, forceNotif: Boolean = false, favoriteFadeIndex: Int = -1): AdapterItem {
         val media = NotificationRegistry.getMedia(app.packageName)
         return AdapterItem(
             type = ViewType.APP,
@@ -1037,6 +1103,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             mediaArtist = media?.artist,
             mediaArt = media?.art,
             notifPreview = if (media == null) NotificationRegistry.getNotificationPreview(app.packageName) else null,
+            favoriteFadeIndex = favoriteFadeIndex,
         )
     }
 
@@ -1052,8 +1119,8 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
 
         if (favList.isNotEmpty()) {
             items.add(AdapterItem(ViewType.HEADER, headerText = getString(R.string.title_favorites)))
-            for (fav in favList) {
-                items.add(adapterItemForApp(fav))
+            favList.forEachIndexed { index, fav ->
+                items.add(adapterItemForApp(fav, favoriteFadeIndex = index))
             }
         }
 
@@ -1115,7 +1182,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             getString(R.string.option_app_info)
         )
 
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_Slim_Dialog)
             .setTitle(appItem.displayLabel)
             .setItems(options) { _, which ->
                 when (which) {
@@ -1158,7 +1225,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             setSelectAllOnFocus(true)
             hint = appItem.label
         }
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, R.style.Theme_Slim_Dialog)
             .setTitle(getString(R.string.option_rename))
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -1188,6 +1255,10 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         val mediaTitle: String? = null,
         val mediaArtist: String? = null,
         val mediaArt: Bitmap? = null,
+        // Position within the Favorites section (0-based), used to fade rows
+        // progressively toward the bottom of that section; -1 for every other
+        // row (full opacity).
+        val favoriteFadeIndex: Int = -1,
     )
 
     class AppListAdapter(
@@ -1199,7 +1270,9 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
         private val pm: PackageManager = context.packageManager
         private val userManager =
             context.getSystemService(Context.USER_SERVICE) as android.os.UserManager
-        private val iconCache = mutableMapOf<String, Drawable>()
+        // Bounded so a device with hundreds of apps doesn't grow this indefinitely —
+        // it was a plain HashMap that never evicted.
+        private val iconCache = android.util.LruCache<String, Drawable>(ICON_CACHE_SIZE)
 
         // Adaptive palette (kept readable on any wallpaper)
         private var primaryTextColor = context.getColor(R.color.text_primary)
@@ -1267,6 +1340,14 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                 holder.appName.text = app.displayLabel
                 holder.appName.setTextColor(primaryTextColor)
 
+                // Favorites fade gently toward the bottom of that section —
+                // a quiet decorative touch, not applied outside Favorites.
+                holder.itemView.alpha = if (item.favoriteFadeIndex >= 0) {
+                    (1f - item.favoriteFadeIndex * FAVORITE_FADE_STEP).coerceAtLeast(FAVORITE_FADE_FLOOR)
+                } else {
+                    1f
+                }
+
                 // Work profile badge
                 holder.workBadge.visibility = if (app.isWorkProfile) View.VISIBLE else View.GONE
 
@@ -1275,7 +1356,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                     holder.appIcon.visibility = View.GONE
                 } else {
                     holder.appIcon.visibility = View.VISIBLE
-                    val icon = iconCache[app.id] ?: try {
+                    val icon = iconCache.get(app.id) ?: try {
                         var resolvedIcon = pm.getApplicationIcon(app.packageName)
                         if (app.isWorkProfile) {
                             val user = userManager.getUserForSerialNumber(app.userSerial)
@@ -1283,7 +1364,7 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
                                 resolvedIcon = pm.getUserBadgedIcon(resolvedIcon, user)
                             }
                         }
-                        iconCache[app.id] = resolvedIcon
+                        iconCache.put(app.id, resolvedIcon)
                         resolvedIcon
                     } catch (e: Exception) {
                         context.getDrawable(android.R.drawable.sym_def_app_icon)
@@ -1389,6 +1470,17 @@ class MainActivity : AppCompatActivity(), WaveGestureView.OnLetterSelectedListen
             }
             override fun areContentsTheSame(oldPos: Int, newPos: Int) =
                 oldList[oldPos] == newList[newPos]
+        }
+
+        companion object {
+            /** Max resolved-icon Drawables kept in memory at once. */
+            private const val ICON_CACHE_SIZE = 250
+
+            /** Alpha lost per row going down the Favorites section. */
+            private const val FAVORITE_FADE_STEP = 0.15f
+
+            /** Favorites never fade past this, so even the last one stays legible. */
+            private const val FAVORITE_FADE_FLOOR = 0.35f
         }
     }
 }

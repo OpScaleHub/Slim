@@ -13,6 +13,18 @@
         <item name="colorPrimary">@color/accent_indigo</item>
     </style>
 
+    <!-- Dialog chrome matching Slim's own dark surface palette instead of the
+         stock Material dialog (white/light background), used for the app
+         long-press menu, rename prompt, and similar in-app dialogs. -->
+    <style name="Theme.Slim.Dialog" parent="ThemeOverlay.Material3.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/dialog_background</item>
+        <item name="colorPrimary">@color/accent_indigo</item>
+        <item name="colorAccent">@color/accent_indigo</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorAlertDialogListItem">@color/text_primary</item>
+    </style>
+
     <!-- Opaque variant for the Settings screen -->
     <style name="Theme.Slim.Settings">
         <item name="android:windowBackground">@color/bg_dark</item>

@@ -26,6 +26,20 @@ class SlimPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_24_HOUR, true)
         set(value) = prefs.edit().putBoolean(KEY_24_HOUR, value).apply()
 
+    // ---- World clock ----
+    // A single optional secondary clock, e.g. for keeping a remote timezone in
+    // view. Empty timezone ID means "off" — there is no separate boolean so the
+    // two settings can't drift out of sync.
+    /** IANA timezone ID (e.g. "America/New_York"), or "" when the world clock is off. */
+    var worldClockTimeZoneId: String
+        get() = prefs.getString(KEY_WORLD_CLOCK_TZ, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_WORLD_CLOCK_TZ, value).apply()
+
+    /** Short display label for the world clock (city name), e.g. "New York". */
+    var worldClockLabel: String
+        get() = prefs.getString(KEY_WORLD_CLOCK_LABEL, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_WORLD_CLOCK_LABEL, value).apply()
+
     // ---- Weather ----
     /** One of [WEATHER_OFF], [WEATHER_SIMULATED], [WEATHER_REAL]. */
     var weatherMode: String
@@ -174,6 +188,8 @@ class SlimPreferences(context: Context) {
         private const val KEY_SHOW_CLOCK = "show_clock"
         private const val KEY_SHOW_DATE = "show_date"
         private const val KEY_24_HOUR = "use_24_hour"
+        private const val KEY_WORLD_CLOCK_TZ = "world_clock_tz"
+        private const val KEY_WORLD_CLOCK_LABEL = "world_clock_label"
         private const val KEY_WEATHER_MODE = "weather_mode"
         private const val KEY_WEATHER_CITY = "weather_city"
         private const val KEY_WEATHER_LAT = "weather_lat"

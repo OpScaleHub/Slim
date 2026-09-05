@@ -31,14 +31,45 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/txtClock"
+        <!-- Main clock, with the optional world clock tucked at its bottom-right
+             (aligned to its baseline via gravity="bottom") so it reads as a
+             companion to the primary time instead of a second row competing
+             with it. -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-thin"
-            android:text="10:09"
-            android:textColor="@color/text_primary"
-            android:textSize="42sp" />
+            android:gravity="bottom"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/txtClock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-light"
+                android:fontFeatureSettings="tnum"
+                android:letterSpacing="0.01"
+                android:text="10:09"
+                android:textColor="@color/text_primary"
+                android:textSize="42sp" />
+
+            <!-- Optional secondary "world clock" (Settings > Home). Off by
+                 default; kept visually quiet (smaller, translucent) so it
+                 never competes with the primary clock. -->
+            <TextView
+                android:id="@+id/txtWorldClock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_marginBottom="7dp"
+                android:alpha="0.7"
+                android:fontFamily="sans-serif-light"
+                android:fontFeatureSettings="tnum"
+                android:text="18:42 · New York"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -51,8 +82,11 @@
                 android:id="@+id/txtDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:background="@drawable/chip_bg"
                 android:fontFamily="sans-serif"
                 android:letterSpacing="0.02"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
                 android:text="Tuesday, June 2"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
@@ -62,47 +96,49 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
-                android:background="@drawable/chip_bg"
                 android:fontFamily="sans-serif"
-                android:paddingHorizontal="10dp"
-                android:paddingVertical="4dp"
                 android:text="☀️ 22°C"
                 android:textColor="@color/accent_color"
                 android:textSize="12sp" />
         </LinearLayout>
+    </LinearLayout>
 
-        <!-- Status bar replacements: shown when immersive mode is active -->
-        <LinearLayout
-            android:id="@+id/statusInfoRow"
+    <!-- Status bar replacements (notification count + battery), shown only in
+         immersive mode. Lives in the top-right corner, independent of the
+         header column, so it never takes a row away from the clock/date. -->
+    <LinearLayout
+        android:id="@+id/statusInfoRow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingTop="40dp"
+        android:paddingEnd="24dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/txtNotificationCount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:visibility="gone">
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:fontFamily="sans-serif"
+            android:paddingVertical="2dp"
+            android:paddingEnd="4dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/txtNotificationCount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:fontFamily="sans-serif"
-                android:paddingVertical="2dp"
-                android:paddingEnd="4dp"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/txtBattery"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:fontFamily="sans-serif"
-                android:text="🔋 --%"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-        </LinearLayout>
+        <TextView
+            android:id="@+id/txtBattery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:fontFamily="sans-serif"
+            android:text="🔋 --%"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <!-- App Widget Frame: hosts a single optional third-party widget.

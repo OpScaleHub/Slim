@@ -42,6 +42,11 @@
             style="@style/SettingsSwitch"
             android:text="@string/settings_24_hour" />
 
+        <TextView
+            android:id="@+id/rowWorldClock"
+            style="@style/SettingsActionRow"
+            android:text="@string/settings_world_clock" />
+
         <!-- ======== WEATHER ======== -->
         <TextView
             style="@style/SettingsSectionHeader"

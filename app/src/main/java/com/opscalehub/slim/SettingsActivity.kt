@@ -152,7 +152,7 @@ class SettingsActivity : AppCompatActivity() {
                 return@launch
             }
             val labels = hiddenApps.map { it.displayLabel }.toTypedArray()
-            AlertDialog.Builder(this@SettingsActivity)
+            AlertDialog.Builder(this@SettingsActivity, R.style.Theme_Slim_Dialog)
                 .setTitle(getString(R.string.settings_hidden_apps) + " — " + getString(R.string.settings_unhide_hint))
                 .setItems(labels) { _, which ->
                     lifecycleScope.launch {
@@ -313,6 +313,7 @@ class SettingsActivity : AppCompatActivity() {
         val switchClock = findViewById<SwitchMaterial>(R.id.switchShowClock)
         val switchDate = findViewById<SwitchMaterial>(R.id.switchShowDate)
         val switch24h = findViewById<SwitchMaterial>(R.id.switch24Hour)
+        val rowWorldClock = findViewById<TextView>(R.id.rowWorldClock)
 
         switchClock.isChecked = prefs.showClock
         switchDate.isChecked = prefs.showDate
@@ -321,6 +322,30 @@ class SettingsActivity : AppCompatActivity() {
         switchClock.setOnCheckedChangeListener { _, checked -> prefs.showClock = checked }
         switchDate.setOnCheckedChangeListener { _, checked -> prefs.showDate = checked }
         switch24h.setOnCheckedChangeListener { _, checked -> prefs.use24HourFormat = checked }
+
+        fun refreshWorldClockRow() {
+            val label = prefs.worldClockLabel.ifEmpty { getString(R.string.settings_world_clock_off) }
+            rowWorldClock.text = getString(R.string.settings_world_clock, label)
+        }
+        refreshWorldClockRow()
+        rowWorldClock.setOnClickListener {
+            val labels = mutableListOf(getString(R.string.settings_world_clock_off))
+            labels.addAll(WorldClockOptions.CITIES.map { it.label })
+            AlertDialog.Builder(this, R.style.Theme_Slim_Dialog)
+                .setTitle(R.string.settings_world_clock_title)
+                .setItems(labels.toTypedArray()) { _, which ->
+                    if (which == 0) {
+                        prefs.worldClockTimeZoneId = ""
+                        prefs.worldClockLabel = ""
+                    } else {
+                        val city = WorldClockOptions.CITIES[which - 1]
+                        prefs.worldClockTimeZoneId = city.timeZoneId
+                        prefs.worldClockLabel = city.label
+                    }
+                    refreshWorldClockRow()
+                }
+                .show()
+        }
     }
 
     private fun bindWeatherSection() {

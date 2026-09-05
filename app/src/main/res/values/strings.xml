@@ -29,6 +29,9 @@
     <string name="settings_show_clock">Show clock</string>
     <string name="settings_show_date">Show date</string>
     <string name="settings_24_hour">Use 24-hour time</string>
+    <string name="settings_world_clock">World clock: %1$s</string>
+    <string name="settings_world_clock_off">Off</string>
+    <string name="settings_world_clock_title">World clock</string>
 
     <string name="settings_weather_mode">Weather display</string>
     <string name="settings_weather_off">Off</string>

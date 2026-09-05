@@ -7,7 +7,9 @@
 
     <!-- Accent -->
     <color name="accent_indigo">#818CF8</color>
-    <color name="accent_color">#818CF8</color>
+    <!-- Alias: same accent used by header chip styling; kept as one name to avoid
+         two literals drifting apart. -->
+    <color name="accent_color">@color/accent_indigo</color>
 
     <!-- Borders -->
     <color name="border_color">#1E2530</color>
